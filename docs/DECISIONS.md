@@ -19,6 +19,18 @@ Assumptions made during implementation. Confirm or correct anything marked **OPE
 | D11 | Disabled Next.js `cacheComponents` for Phase 1 | Conflicts with authenticated layouts / cookies; revisit later. |
 | D12 | Keep `middleware.ts` for now (Next 16 warns about `proxy`) | Auth.js JWT gate works; migrate to `proxy.ts` when Auth.js docs catch up. |
 
+## Phase 2
+
+| ID | Decision | Rationale |
+|---|---|---|
+| D13 | Phase 2 asset forms omit custom-field rendering (`customFields: {}`) | Dynamic fields belong to Phase 3; avoids half-built DynamicField. |
+| D14 | Duplicate policy = soft warn + acknowledge + flag `needsReview` | Matches brief §8; no strict-uniqueness settings UI yet. |
+| D15 | Delete of in-use branch/category/status blocked with a clear error | Merge/reassign UI deferred; prevents orphaning assets. |
+| D16 | `SavedView` stores filter/column/sort JSON mirroring URL params | Shareable list state without a second query language. |
+| D17 | Bulk mutation chunk size = **200** | Vercel Hobby serverless timeout budget. |
+| D18 | Status note required for Faulty, In Repair, Disposed, Lost, Retired | Matches brief §8; checked by status name. |
+| D19 | Pin `@tanstack/react-table` to **v8** | v9 renames core APIs; v8 matches brief examples and is stable. |
+
 ## Open questions
 
 1. Confirm **Tech** branch code (`TJ`?).

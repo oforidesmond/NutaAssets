@@ -64,3 +64,7 @@ See [`.env.example`](.env.example). Use pooled `DATABASE_URL` at runtime and `DI
 ## Phase status
 
 **Phase 1 (Foundation)** — scaffold, schema/seed, auth, RBAC, app shell, audit plumbing, CI.
+
+**Phase 2 (Core register)** — branches/locations/categories/statuses admin; assets list (search, filters, column chooser, saved views, bulk actions); add/edit/detail with history; soft delete + recycle bin; duplicate soft-warnings.
+
+Deferred to later phases: custom fields UI (P3), import/export/labels/scan (P4), reconciliation (P5), dashboard KPIs (P6).

@@ -160,6 +160,7 @@ model User {
   approvedEntries     ReconciliationEntry[]   @relation("EntryApprovedBy")
   createdExercises    ReconciliationExercise[] @relation("ExerciseCreatedBy")
   verifiedItems       ReconciliationItem[]    @relation("ItemVerifiedBy")
+  savedViews          SavedView[]
 }
 
 model UserDepartment {
@@ -430,4 +431,21 @@ model Setting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+model SavedView {
+  id           String   @id @default(cuid())
+  userId       String
+  departmentId String?
+  name         String
+  filters      Json
+  columns      Json
+  sort         Json?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, departmentId])
 }
