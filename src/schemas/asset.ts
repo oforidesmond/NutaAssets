@@ -18,6 +18,7 @@ export const assetFormSchema = z.object({
   warrantyExpiry: z.string().optional().nullable(),
   condition: conditionSchema.optional().nullable(),
   remarks: z.string().optional().nullable(),
+  customFields: z.record(z.string(), z.unknown()).optional().default({}),
   acknowledgeDuplicates: z.boolean().optional().default(false),
   updatedAt: z.string().optional().nullable(),
 });

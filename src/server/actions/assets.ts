@@ -362,3 +362,123 @@ export async function getLocationsForBranchAction(
     return handleAssetError(error);
   }
 }
+
+export async function exportAssetsAction(input: {
+  filters: Record<string, string>;
+  columns: string[];
+  ids?: string[];
+}): Promise<
+  ActionResult<{
+    rows: {
+      assetTag: string | null;
+      serialNumber: string | null;
+      brand: string | null;
+      model: string | null;
+      assignedToText: string | null;
+      condition: string | null;
+      remarks: string | null;
+      needsReview: boolean;
+      updatedAt: string;
+      customFields: unknown;
+      category: { name: string };
+      branch: { name: string };
+      location: { name: string } | null;
+      status: { name: string };
+    }[];
+    columns: string[];
+    fieldDefs: {
+      key: string;
+      label: string;
+      type: import("@prisma/client").FieldType;
+      options: unknown;
+    }[];
+  }>
+> {
+  try {
+    const user = await requireUser();
+    authorize(user, "export", "export");
+
+    const { listAssets, parseAssetListParams } = await import(
+      "@/server/queries/assets"
+    );
+
+    if (input.ids && input.ids.length > 0) {
+      const assets = await prisma.asset.findMany({
+        where: { id: { in: input.ids }, deletedAt: null },
+        take: 2000,
+        include: {
+          category: { select: { name: true } },
+          branch: { select: { name: true } },
+          location: { select: { name: true } },
+          status: { select: { name: true } },
+        },
+      });
+      const deptIds = [...new Set(assets.map((a) => a.departmentId))];
+      const fieldDefs = await prisma.fieldDefinition.findMany({
+        where: { departmentId: { in: deptIds }, isActive: true },
+        select: {
+          key: true,
+          label: true,
+          type: true,
+          options: true,
+        },
+      });
+      return {
+        ok: true,
+        data: {
+          rows: assets.map((a) => ({
+            assetTag: a.assetTag,
+            serialNumber: a.serialNumber,
+            brand: a.brand,
+            model: a.model,
+            assignedToText: a.assignedToText,
+            condition: a.condition,
+            remarks: a.remarks,
+            needsReview: a.needsReview,
+            updatedAt: a.updatedAt.toISOString(),
+            customFields: a.customFields,
+            category: a.category,
+            branch: a.branch,
+            location: a.location,
+            status: a.status,
+          })),
+          columns: input.columns,
+          fieldDefs,
+        },
+      };
+    }
+
+    const params = parseAssetListParams({
+      ...input.filters,
+      page: "1",
+      pageSize: "2000",
+      columns: input.columns.join(","),
+    });
+    const list = await listAssets(user, params);
+    return {
+      ok: true,
+      data: {
+        rows: list.rows.map((a) => ({
+          assetTag: a.assetTag,
+          serialNumber: a.serialNumber,
+          brand: a.brand,
+          model: a.model,
+          assignedToText: a.assignedToText,
+          condition: a.condition,
+          remarks: a.remarks,
+          needsReview: a.needsReview,
+          updatedAt: a.updatedAt.toISOString(),
+          customFields: a.customFields,
+          category: { name: a.category.name },
+          branch: { name: a.branch.name },
+          location: a.location ? { name: a.location.name } : null,
+          status: { name: a.status.name },
+        })),
+        columns: input.columns,
+        fieldDefs: list.fieldDefs,
+      },
+    };
+  } catch (error) {
+    return handleAssetError(error);
+  }
+}

@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { toast } from "sonner";
 
+import { DynamicField } from "@/components/forms/dynamic-field";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -25,6 +26,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  applyCustomFieldDefaults,
+} from "@/lib/dynamic-schema";
+import { fieldsForCategory, readCustomFieldsJson } from "@/lib/custom-fields";
 import { assetFormSchema, type AssetFormInput } from "@/schemas/asset";
 import {
   checkDuplicatesAction,
@@ -33,9 +38,24 @@ import {
   suggestTagAction,
   updateAssetAction,
 } from "@/server/actions/assets";
+import type { FieldType } from "@prisma/client";
 
 type Option = { id: string; name: string; code?: string };
 type StatusOption = Option & { color: string; isDefault?: boolean };
+
+export type AssetFormFieldDef = {
+  id: string;
+  key: string;
+  label: string;
+  type: FieldType;
+  options: unknown;
+  required: boolean;
+  helpText: string | null;
+  placeholder: string | null;
+  defaultValue: unknown;
+  categoryId: string | null;
+  isActive: boolean;
+};
 
 type Props = {
   mode: "create" | "edit";
@@ -45,6 +65,7 @@ type Props = {
   categories: Option[];
   branches: Option[];
   statuses: StatusOption[];
+  fieldDefs?: AssetFormFieldDef[];
   updatedAt?: string;
 };
 
@@ -56,6 +77,7 @@ export function AssetForm({
   categories,
   branches,
   statuses,
+  fieldDefs = [],
   updatedAt,
 }: Props) {
   const router = useRouter();
@@ -78,6 +100,12 @@ export function AssetForm({
     statuses[0]?.id ??
     "";
 
+  const initialCustom = applyCustomFieldDefaults(
+    fieldDefs,
+    defaults?.categoryId ?? null,
+    readCustomFieldsJson(defaults?.customFields),
+  );
+
   const form = useForm<AssetFormInput>({
     // zod v4 + RHF resolver typings are slightly mismatched
     resolver: zodResolver(assetFormSchema) as never,
@@ -97,6 +125,7 @@ export function AssetForm({
       warrantyExpiry: defaults?.warrantyExpiry ?? "",
       condition: defaults?.condition ?? null,
       remarks: defaults?.remarks ?? "",
+      customFields: initialCustom,
       acknowledgeDuplicates: false,
       updatedAt: updatedAt ?? null,
     },
@@ -106,6 +135,28 @@ export function AssetForm({
   const categoryId = form.watch("categoryId");
   const assetTag = form.watch("assetTag");
   const serialNumber = form.watch("serialNumber");
+  const customFields = form.watch("customFields") ?? {};
+
+  const scopedFields = useMemo(
+    () => fieldsForCategory(fieldDefs, categoryId || null),
+    [fieldDefs, categoryId],
+  );
+
+  useEffect(() => {
+    const next = applyCustomFieldDefaults(
+      fieldDefs,
+      categoryId || null,
+      readCustomFieldsJson(form.getValues("customFields")),
+    );
+    // Drop values for fields that no longer apply to this category
+    const allowed = new Set(scopedFields.map((f) => f.key));
+    const cleaned: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(next)) {
+      if (allowed.has(k)) cleaned[k] = v;
+    }
+    form.setValue("customFields", cleaned);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId]);
 
   useEffect(() => {
     if (!branchId) {
@@ -532,6 +583,29 @@ export function AssetForm({
             </div>
           )}
         </section>
+
+        {scopedFields.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-base font-semibold">Custom fields</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {scopedFields.map((def) => (
+                <DynamicField
+                  key={def.key}
+                  field={def}
+                  mode="form"
+                  value={customFields[def.key]}
+                  onChange={(v) =>
+                    form.setValue(
+                      "customFields",
+                      { ...form.getValues("customFields"), [def.key]: v },
+                      { shouldDirty: true },
+                    )
+                  }
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         <FormField
           control={form.control}

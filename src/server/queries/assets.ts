@@ -1,4 +1,4 @@
-import type { Condition, Prisma } from "@prisma/client";
+import type { Condition, FieldType, Prisma } from "@prisma/client";
 
 import type { AuthUser } from "@/lib/authorize";
 import {
@@ -26,6 +26,8 @@ export type AssetListParams = {
   hasTag?: boolean;
   hasSerial?: boolean;
   columns?: string[];
+  /** Custom field filters keyed by FieldDefinition.key */
+  cf?: Record<string, string>;
 };
 
 export function parseAssetListParams(
@@ -61,6 +63,13 @@ export function parseAssetListParams(
 
   const condition = get("condition") as Condition | undefined;
 
+  const cf: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(searchParams)) {
+    if (!key.startsWith("cf_")) continue;
+    const v = Array.isArray(raw) ? raw[0] : raw;
+    if (v != null && v !== "") cf[key.slice(3)] = v;
+  }
+
   return {
     q: get("q")?.trim() || undefined,
     page,
@@ -80,6 +89,30 @@ export function parseAssetListParams(
     hasTag,
     hasSerial,
     columns,
+    cf: Object.keys(cf).length > 0 ? cf : undefined,
+  };
+}
+
+function customFieldFilter(
+  key: string,
+  value: string,
+  type: FieldType,
+): Prisma.AssetWhereInput {
+  if (type === "BOOLEAN") {
+    const bool = value === "true" || value === "1";
+    return { customFields: { path: [key], equals: bool } };
+  }
+  if (type === "NUMBER" || type === "DECIMAL") {
+    const n = Number(value);
+    if (!Number.isNaN(n)) {
+      return { customFields: { path: [key], equals: n } };
+    }
+  }
+  if (type === "SELECT" || type === "DATE") {
+    return { customFields: { path: [key], equals: value } };
+  }
+  return {
+    customFields: { path: [key], string_contains: value },
   };
 }
 
@@ -87,6 +120,24 @@ export async function listAssets(user: AuthUser, params: AssetListParams) {
   const cookieDept = await getSelectedDepartmentId();
   const deptScope = scopedDepartmentIds(user, cookieDept);
   const branchScope = scopedBranchIds(user, params.branchId);
+
+  const fieldDefs = await prisma.fieldDefinition.findMany({
+    where: {
+      isActive: true,
+      ...(deptScope ? { departmentId: { in: deptScope } } : {}),
+      ...(cookieDept ? { departmentId: cookieDept } : {}),
+    },
+    select: {
+      key: true,
+      label: true,
+      type: true,
+      options: true,
+      showInList: true,
+      searchable: true,
+      categoryId: true,
+    },
+    orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
+  });
 
   const andParts: Prisma.AssetWhereInput[] = [];
 
@@ -109,17 +160,29 @@ export async function listAssets(user: AuthUser, params: AssetListParams) {
     });
   }
 
+  if (params.cf) {
+    for (const [key, value] of Object.entries(params.cf)) {
+      const def = fieldDefs.find((f) => f.key === key);
+      if (!def) continue;
+      andParts.push(customFieldFilter(key, value, def.type));
+    }
+  }
+
   if (params.q) {
-    andParts.push({
-      OR: [
-        { assetTag: { contains: params.q, mode: "insensitive" } },
-        { serialNumber: { contains: params.q, mode: "insensitive" } },
-        { brand: { contains: params.q, mode: "insensitive" } },
-        { model: { contains: params.q, mode: "insensitive" } },
-        { assignedToText: { contains: params.q, mode: "insensitive" } },
-        { remarks: { contains: params.q, mode: "insensitive" } },
-      ],
-    });
+    const searchOr: Prisma.AssetWhereInput[] = [
+      { assetTag: { contains: params.q, mode: "insensitive" } },
+      { serialNumber: { contains: params.q, mode: "insensitive" } },
+      { brand: { contains: params.q, mode: "insensitive" } },
+      { model: { contains: params.q, mode: "insensitive" } },
+      { assignedToText: { contains: params.q, mode: "insensitive" } },
+      { remarks: { contains: params.q, mode: "insensitive" } },
+    ];
+    for (const def of fieldDefs.filter((f) => f.searchable)) {
+      searchOr.push({
+        customFields: { path: [def.key], string_contains: params.q },
+      });
+    }
+    andParts.push({ OR: searchOr });
   }
 
   const where: Prisma.AssetWhereInput = {
@@ -194,6 +257,7 @@ export async function listAssets(user: AuthUser, params: AssetListParams) {
     pageSize,
     pageCount: Math.max(1, Math.ceil(total / pageSize)),
     columns: params.columns ?? [...DEFAULT_ASSET_COLUMNS],
+    fieldDefs,
   };
 }
 

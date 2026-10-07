@@ -12,8 +12,11 @@ import {
 import { toast } from "sonner";
 
 import { StatusBadge } from "@/components/assets/status-badge";
+import { DynamicField } from "@/components/forms/dynamic-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { readCustomFieldsJson } from "@/lib/custom-fields";
+import type { FieldType } from "@prisma/client";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +52,15 @@ type Event = {
   user: { id: string; name: string } | null;
 };
 
+type FieldDef = {
+  key: string;
+  label: string;
+  type: FieldType;
+  options: unknown;
+  categoryId: string | null;
+  isActive: boolean;
+};
+
 type Asset = {
   id: string;
   assetTag: string | null;
@@ -58,6 +70,7 @@ type Asset = {
   assignedToText: string | null;
   condition: string | null;
   remarks: string | null;
+  customFields?: unknown;
   needsReview: boolean;
   reviewReasons: string[];
   purchaseDate: string | Date | null;
@@ -66,7 +79,7 @@ type Asset = {
   deletedAt: string | Date | null;
   createdAt: string | Date;
   updatedAt: string | Date;
-  category: { name: string };
+  category: { id?: string; name: string };
   branch: { id: string; name: string };
   location: { name: string } | null;
   status: { id: string; name: string; color: string };
@@ -95,6 +108,7 @@ type Props = {
   canMutate: boolean;
   statuses: { id: string; name: string; color: string }[];
   branches: { id: string; name: string }[];
+  fieldDefs?: FieldDef[];
 };
 
 export function AssetDetail({
@@ -105,6 +119,7 @@ export function AssetDetail({
   canMutate,
   statuses,
   branches,
+  fieldDefs = [],
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -296,6 +311,40 @@ export function AssetDetail({
               <p className="whitespace-pre-wrap text-sm">{asset.remarks}</p>
             </div>
           )}
+
+          {(() => {
+            const values = readCustomFieldsJson(asset.customFields);
+            const categoryId = asset.category.id;
+            const visible = fieldDefs.filter(
+              (f) =>
+                f.isActive &&
+                (f.categoryId == null || f.categoryId === categoryId) &&
+                values[f.key] != null &&
+                values[f.key] !== "",
+            );
+            if (visible.length === 0) return null;
+            return (
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                  Custom fields
+                </h3>
+                <dl className="grid gap-3 sm:grid-cols-2 text-sm">
+                  {visible.map((f) => (
+                    <div key={f.key}>
+                      <dt className="text-muted-foreground">{f.label}</dt>
+                      <dd className="font-medium">
+                        <DynamicField
+                          field={f}
+                          value={values[f.key]}
+                          mode="cell"
+                        />
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            );
+          })()}
 
           {asset.reviewReasons.length > 0 && (
             <div>

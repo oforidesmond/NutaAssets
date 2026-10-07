@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { AssetDetail } from "@/components/assets/asset-detail";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/authorize";
+import { listActiveFieldDefinitions } from "@/server/queries/admin";
 import {
   getAssetDetail,
   getAssetFilterOptions,
@@ -27,6 +28,11 @@ export default async function AssetDetailPage({ params }: PageProps) {
 
   if (!detail) notFound();
 
+  const fieldDefs = await listActiveFieldDefinitions(
+    session.user,
+    detail.asset.departmentId,
+  );
+
   return (
     <AssetDetail
       asset={{
@@ -48,6 +54,7 @@ export default async function AssetDetailPage({ params }: PageProps) {
       canMutate={can(session.user, "update")}
       statuses={options.statuses}
       branches={options.branches}
+      fieldDefs={fieldDefs}
     />
   );
 }

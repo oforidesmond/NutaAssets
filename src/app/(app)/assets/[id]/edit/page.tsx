@@ -4,10 +4,12 @@ import { notFound, redirect } from "next/navigation";
 import { AssetForm } from "@/components/assets/asset-form";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/authorize";
+import { listActiveFieldDefinitions } from "@/server/queries/admin";
 import {
   getAssetDetail,
   getAssetFormOptions,
 } from "@/server/queries/assets";
+import { readCustomFieldsJson } from "@/lib/custom-fields";
 
 export const metadata: Metadata = { title: "Edit asset" };
 
@@ -37,6 +39,10 @@ export default async function EditAssetPage({ params }: PageProps) {
   const statuses = options.statuses.filter(
     (s) => !("departmentId" in s) || s.departmentId === departmentId,
   );
+  const fieldDefs = await listActiveFieldDefinitions(
+    session.user,
+    departmentId,
+  );
 
   return (
     <div className="space-y-4">
@@ -56,6 +62,7 @@ export default async function EditAssetPage({ params }: PageProps) {
         categories={categories}
         branches={options.branches}
         statuses={statuses}
+        fieldDefs={fieldDefs}
         defaults={{
           departmentId,
           categoryId: asset.categoryId,
@@ -76,6 +83,7 @@ export default async function EditAssetPage({ params }: PageProps) {
             : "",
           condition: asset.condition,
           remarks: asset.remarks,
+          customFields: readCustomFieldsJson(asset.customFields),
         }}
       />
     </div>

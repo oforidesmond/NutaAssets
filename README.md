@@ -67,4 +67,6 @@ See [`.env.example`](.env.example). Use pooled `DATABASE_URL` at runtime and `DI
 
 **Phase 2 (Core register)** — branches/locations/categories/statuses admin; assets list (search, filters, column chooser, saved views, bulk actions); add/edit/detail with history; soft delete + recycle bin; duplicate soft-warnings.
 
-Deferred to later phases: custom fields UI (P3), import/export/labels/scan (P4), reconciliation (P5), dashboard KPIs (P6).
+**Phase 3 (Flexibility)** — custom field manager + dynamic form/filter/table/CSV export; department admin with config clone; users & roles admin; settings (org, tag template, placeholders).
+
+Deferred to later phases: full import wizard / styled Excel-PDF / labels / scan (P4), reconciliation (P5), dashboard KPIs (P6).

@@ -7,9 +7,13 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/admin", label: "Overview", exact: true },
+  { href: "/admin/departments", label: "Departments" },
   { href: "/admin/branches", label: "Branches" },
   { href: "/admin/categories", label: "Categories" },
   { href: "/admin/statuses", label: "Statuses" },
+  { href: "/admin/fields", label: "Custom fields" },
+  { href: "/admin/users", label: "Users" },
+  { href: "/admin/settings", label: "Settings" },
   { href: "/admin/recycle-bin", label: "Recycle bin" },
 ];
 

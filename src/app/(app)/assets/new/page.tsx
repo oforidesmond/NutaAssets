@@ -5,7 +5,10 @@ import { AssetForm } from "@/components/assets/asset-form";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/authorize";
 import { getAssetFormOptions } from "@/server/queries/assets";
-import { resolveAdminDepartmentId } from "@/server/queries/admin";
+import {
+  listActiveFieldDefinitions,
+  resolveAdminDepartmentId,
+} from "@/server/queries/admin";
 
 export const metadata: Metadata = { title: "Add asset" };
 
@@ -27,12 +30,15 @@ export default async function NewAssetPage() {
     );
   }
 
-  const categories = options.categories.filter(
-    (c) => !("departmentId" in c) || c.departmentId === departmentId,
-  );
-  const statuses = options.statuses.filter(
-    (s) => !("departmentId" in s) || s.departmentId === departmentId,
-  );
+  const [categories, statuses, fieldDefs] = [
+    options.categories.filter(
+      (c) => !("departmentId" in c) || c.departmentId === departmentId,
+    ),
+    options.statuses.filter(
+      (s) => !("departmentId" in s) || s.departmentId === departmentId,
+    ),
+    await listActiveFieldDefinitions(session.user, departmentId),
+  ];
 
   return (
     <div className="space-y-4">
@@ -51,6 +57,7 @@ export default async function NewAssetPage() {
         categories={categories}
         branches={options.branches}
         statuses={statuses}
+        fieldDefs={fieldDefs}
       />
     </div>
   );

@@ -31,6 +31,17 @@ Assumptions made during implementation. Confirm or correct anything marked **OPE
 | D18 | Status note required for Faulty, In Repair, Disposed, Lost, Retired | Matches brief §8; checked by status name. |
 | D19 | Pin `@tanstack/react-table` to **v8** | v9 renames core APIs; v8 matches brief examples and is stable. |
 
+## Phase 3
+
+| ID | Decision | Rationale |
+|---|---|---|
+| D20 | Phase 3 export = **CSV** of current filtered view/selection (incl. custom fields) | Proves dynamic export rendering; styled Excel/PDF/labels stay Phase 4. |
+| D21 | Field reorder via **@dnd-kit** | Standard accessible drag-and-drop with shadcn tables. |
+| D22 | Placeholders loaded from `Setting.placeholders` with hardcoded fallback | Admins can edit empty-tokens without deploy; tests keep default set. |
+| D23 | Department clone copies **categories, statuses, FieldDefinitions** only | Config reuse without copying assets/users. |
+| D24 | Custom column ids use prefix `cf:` + field `key` | Avoid collisions with core column ids in list/saved views. |
+| D25 | Department CRUD/clone is **Super Admin only** | Hard org config; Dept Admins manage within their dept. |
+
 ## Open questions
 
 1. Confirm **Tech** branch code (`TJ`?).

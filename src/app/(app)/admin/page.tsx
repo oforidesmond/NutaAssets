@@ -3,7 +3,11 @@ import {
   Building2,
   FolderTree,
   ListChecks,
+  Settings2,
+  SlidersHorizontal,
   Trash2,
+  Users,
+  Network,
 } from "lucide-react";
 
 import type { Metadata } from "next";
@@ -11,6 +15,12 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Admin" };
 
 const cards = [
+  {
+    href: "/admin/departments",
+    title: "Departments",
+    description: "Add departments and clone categories, statuses, and fields.",
+    icon: Network,
+  },
   {
     href: "/admin/branches",
     title: "Branches & locations",
@@ -28,6 +38,24 @@ const cards = [
     title: "Statuses",
     description: "Active, Faulty, Disposed, and other lifecycle statuses.",
     icon: ListChecks,
+  },
+  {
+    href: "/admin/fields",
+    title: "Custom fields",
+    description: "Dynamic fields for forms, filters, table columns, and export.",
+    icon: SlidersHorizontal,
+  },
+  {
+    href: "/admin/users",
+    title: "Users & roles",
+    description: "Invite users, set roles, and scope departments or branches.",
+    icon: Users,
+  },
+  {
+    href: "/admin/settings",
+    title: "Settings",
+    description: "Organisation name, tag template, and placeholder values.",
+    icon: Settings2,
   },
   {
     href: "/admin/recycle-bin",

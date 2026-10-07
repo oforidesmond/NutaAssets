@@ -12,10 +12,30 @@ import {
 import {
   branchSchema,
   categorySchema,
+  departmentSchema,
+  fieldDefinitionSchema,
+  fieldDefinitionUpdateSchema,
+  fieldReorderSchema,
   locationSchema,
+  settingsUpdateSchema,
   statusSchema,
+  userCreateSchema,
+  userResetPasswordSchema,
+  userUpdateSchema,
 } from "@/schemas/admin";
 import { fail, type ActionResult } from "@/server/actions/types";
+import {
+  createDepartment,
+  deactivateDepartment,
+  updateDepartment,
+} from "@/server/services/admin-departments";
+import {
+  archiveFieldDefinition,
+  createFieldDefinition,
+  reorderFieldDefinitions,
+  restoreFieldDefinition,
+  updateFieldDefinition,
+} from "@/server/services/admin-fields";
 import {
   createBranch,
   createCategory,
@@ -31,7 +51,33 @@ import {
   updateLocation,
   updateStatus,
 } from "@/server/services/admin-org";
+import {
+  createUser,
+  resetUserPassword,
+  updateUser,
+} from "@/server/services/admin-users";
+import { updateSettings } from "@/server/services/admin-settings";
 import { restoreAsset } from "@/server/services/assets";
+
+async function requireSuperAdmin() {
+  const user = await requireAdmin();
+  if (user.role !== "SUPER_ADMIN") {
+    throw new AuthorizationError("Only Super Admins can do that.");
+  }
+  return user;
+}
+
+async function requireManageUsers() {
+  const session = await auth();
+  authorize(session?.user, "manage_users");
+  return session!.user;
+}
+
+async function requireManageSettings() {
+  const session = await auth();
+  authorize(session?.user, "manage_settings");
+  return session!.user;
+}
 
 function handleError(error: unknown): ActionResult {
   if (error instanceof AuthorizationError) {
@@ -248,6 +294,215 @@ export async function restoreAssetAction(id: string): Promise<ActionResult> {
     await restoreAsset(id, user.id);
     revalidatePath("/admin/recycle-bin");
     revalidatePath("/assets");
+    return { ok: true };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function createFieldAction(
+  raw: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const user = await requireAdmin();
+    const parsed = fieldDefinitionSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message };
+    }
+    assertDepartmentAccess(user, parsed.data.departmentId);
+    const field = await createFieldDefinition(parsed.data, user.id);
+    revalidatePath("/admin/fields");
+    revalidatePath("/assets");
+    return { ok: true, data: { id: field.id } };
+  } catch (error) {
+    return fail(handleError(error));
+  }
+}
+
+export async function updateFieldAction(
+  id: string,
+  raw: unknown,
+): Promise<ActionResult> {
+  try {
+    const user = await requireAdmin();
+    const parsed = fieldDefinitionUpdateSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message };
+    }
+    assertDepartmentAccess(user, parsed.data.departmentId);
+    await updateFieldDefinition(id, parsed.data, user.id);
+    revalidatePath("/admin/fields");
+    revalidatePath("/assets");
+    return { ok: true };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function archiveFieldAction(id: string): Promise<ActionResult> {
+  try {
+    const user = await requireAdmin();
+    await archiveFieldDefinition(id, user.id);
+    revalidatePath("/admin/fields");
+    revalidatePath("/assets");
+    return { ok: true };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function restoreFieldAction(id: string): Promise<ActionResult> {
+  try {
+    const user = await requireAdmin();
+    await restoreFieldDefinition(id, user.id);
+    revalidatePath("/admin/fields");
+    revalidatePath("/assets");
+    return { ok: true };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function reorderFieldsAction(
+  raw: unknown,
+): Promise<ActionResult> {
+  try {
+    const user = await requireAdmin();
+    const parsed = fieldReorderSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message };
+    }
+    assertDepartmentAccess(user, parsed.data.departmentId);
+    await reorderFieldDefinitions(
+      parsed.data.departmentId,
+      parsed.data.orderedIds,
+      user.id,
+    );
+    revalidatePath("/admin/fields");
+    return { ok: true };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function createDepartmentAction(
+  raw: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const user = await requireSuperAdmin();
+    const parsed = departmentSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message };
+    }
+    const dept = await createDepartment(parsed.data, user.id);
+    revalidatePath("/admin/departments");
+    revalidatePath("/");
+    return { ok: true, data: { id: dept.id } };
+  } catch (error) {
+    return fail(handleError(error));
+  }
+}
+
+export async function updateDepartmentAction(
+  id: string,
+  raw: unknown,
+): Promise<ActionResult> {
+  try {
+    const user = await requireSuperAdmin();
+    const parsed = departmentSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message };
+    }
+    const { cloneFromDepartmentId: _clone, ...rest } = parsed.data;
+    void _clone;
+    await updateDepartment(id, rest, user.id);
+    revalidatePath("/admin/departments");
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function deactivateDepartmentAction(
+  id: string,
+): Promise<ActionResult> {
+  try {
+    const user = await requireSuperAdmin();
+    await deactivateDepartment(id, user.id);
+    revalidatePath("/admin/departments");
+    revalidatePath("/");
+    return { ok: true };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function createUserAction(
+  raw: unknown,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const user = await requireManageUsers();
+    const parsed = userCreateSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message };
+    }
+    const created = await createUser(parsed.data, user.id);
+    revalidatePath("/admin/users");
+    return { ok: true, data: { id: created.id } };
+  } catch (error) {
+    return fail(handleError(error));
+  }
+}
+
+export async function updateUserAction(
+  id: string,
+  raw: unknown,
+): Promise<ActionResult> {
+  try {
+    const user = await requireManageUsers();
+    const parsed = userUpdateSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message };
+    }
+    await updateUser(id, parsed.data, user.id);
+    revalidatePath("/admin/users");
+    return { ok: true };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function resetUserPasswordAction(
+  id: string,
+  raw: unknown,
+): Promise<ActionResult> {
+  try {
+    const user = await requireManageUsers();
+    const parsed = userResetPasswordSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message };
+    }
+    await resetUserPassword(id, parsed.data.password, user.id);
+    revalidatePath("/admin/users");
+    return { ok: true };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function updateSettingsAction(
+  raw: unknown,
+): Promise<ActionResult> {
+  try {
+    const user = await requireManageSettings();
+    const parsed = settingsUpdateSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message };
+    }
+    await updateSettings(parsed.data, user.id);
+    revalidatePath("/admin/settings");
+    revalidatePath("/");
     return { ok: true };
   } catch (error) {
     return handleError(error);

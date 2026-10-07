@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 
 import { StatusBadge } from "@/components/assets/status-badge";
+import { DynamicField } from "@/components/forms/dynamic-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -56,6 +57,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cfColumnId, readCustomFieldsJson } from "@/lib/custom-fields";
+import { buildAssetsCsv, downloadCsv } from "@/lib/export-csv";
 import { ALL_ASSET_COLUMNS } from "@/schemas/asset";
 import {
   assignAssetAction,
@@ -64,9 +67,12 @@ import {
   deleteAssetAction,
   deleteViewAction,
   duplicateAssetAction,
+  exportAssetsAction,
   saveViewAction,
   transferAssetAction,
 } from "@/server/actions/assets";
+import type { FieldType } from "@prisma/client";
+import { Download } from "lucide-react";
 
 export type AssetRow = {
   id: string;
@@ -79,10 +85,21 @@ export type AssetRow = {
   remarks: string | null;
   needsReview: boolean;
   updatedAt: string | Date;
+  customFields?: unknown;
   category: { id: string; name: string };
   branch: { id: string; name: string };
   location: { id: string; name: string } | null;
   status: { id: string; name: string; color: string };
+};
+
+export type TableFieldDef = {
+  key: string;
+  label: string;
+  type: FieldType;
+  options: unknown;
+  showInList: boolean;
+  searchable: boolean;
+  categoryId: string | null;
 };
 
 type FilterOption = { id: string; name: string };
@@ -102,9 +119,11 @@ type Props = {
   pageCount: number;
   columns: string[];
   canMutate: boolean;
+  canExport?: boolean;
   branches: FilterOption[];
   categories: FilterOption[];
   statuses: (FilterOption & { color: string })[];
+  fieldDefs?: TableFieldDef[];
   savedViews: SavedView[];
   departmentId: string | null;
 };
@@ -133,9 +152,11 @@ export function AssetsTable({
   pageCount,
   columns: visibleColumns,
   canMutate,
+  canExport = true,
   branches,
   categories,
   statuses,
+  fieldDefs = [],
   savedViews,
   departmentId,
 }: Props) {
@@ -288,6 +309,24 @@ export function AssetsTable({
       },
     };
 
+    for (const def of fieldDefs) {
+      const colId = cfColumnId(def.key);
+      map[colId] = {
+        id: colId,
+        header: def.label,
+        cell: ({ row }) => {
+          const cf = readCustomFieldsJson(row.original.customFields);
+          return (
+            <DynamicField
+              field={def}
+              value={cf[def.key]}
+              mode="cell"
+            />
+          );
+        },
+      };
+    }
+
     for (const key of visibleColumns) {
       if (map[key]) cols.push(map[key]);
     }
@@ -372,7 +411,7 @@ export function AssetsTable({
     });
 
     return cols;
-  }, [canMutate, visibleColumns, router]);
+  }, [canMutate, visibleColumns, fieldDefs, router]);
 
   const table = useReactTable({
     data: rows,
@@ -545,9 +584,63 @@ export function AssetsTable({
               <SelectItem value="0">Clean</SelectItem>
             </SelectContent>
           </Select>
+          {fieldDefs.slice(0, 4).map((def) => (
+            <div key={def.key} className="min-w-[140px] max-w-[180px]">
+              <DynamicField
+                field={def}
+                mode="filter"
+                value={searchParams.get(`cf_${def.key}`) ?? ""}
+                onChange={(v) =>
+                  updateParams({
+                    [`cf_${def.key}`]:
+                      v == null || v === "" ? null : String(v),
+                  })
+                }
+              />
+            </div>
+          ))}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {canExport && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const filters: Record<string, string> = {};
+                  searchParams.forEach((v, k) => {
+                    if (k !== "page" && k !== "pageSize" && k !== "columns") {
+                      filters[k] = v;
+                    }
+                  });
+                  const res = await exportAssetsAction({
+                    filters,
+                    columns: visibleColumns,
+                    ids: selectedIds.length > 0 ? selectedIds : undefined,
+                  });
+                  if (!res.ok || !res.data) {
+                    toast.error(res.error ?? "Export failed");
+                    return;
+                  }
+                  const csv = buildAssetsCsv(
+                    res.data.rows,
+                    res.data.columns,
+                    res.data.fieldDefs,
+                  );
+                  downloadCsv(
+                    `assets-${new Date().toISOString().slice(0, 10)}.csv`,
+                    csv,
+                  );
+                  toast.success(`Exported ${res.data.rows.length} row(s)`);
+                })
+              }
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -610,7 +703,7 @@ export function AssetsTable({
                 Columns
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="max-h-80 w-52 overflow-y-auto">
               {ALL_ASSET_COLUMNS.map((col) => (
                 <DropdownMenuCheckboxItem
                   key={col}
@@ -627,6 +720,33 @@ export function AssetsTable({
                   {COLUMN_LABELS[col] ?? col}
                 </DropdownMenuCheckboxItem>
               ))}
+              {fieldDefs.filter((f) => f.showInList).length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Custom fields</DropdownMenuLabel>
+                  {fieldDefs
+                    .filter((f) => f.showInList)
+                    .map((def) => {
+                      const colId = cfColumnId(def.key);
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={colId}
+                          checked={visibleColumns.includes(colId)}
+                          onCheckedChange={(checked) => {
+                            const next = checked
+                              ? [...visibleColumns, colId]
+                              : visibleColumns.filter((c) => c !== colId);
+                            updateParams({
+                              columns: next.length ? next.join(",") : null,
+                            });
+                          }}
+                        >
+                          {def.label}
+                        </DropdownMenuCheckboxItem>
+                      );
+                    })}
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

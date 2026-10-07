@@ -7,6 +7,10 @@ import {
   type DuplicateAssetHit,
 } from "@/lib/duplicates";
 import { prisma } from "@/lib/db";
+import {
+  CustomFieldsValidationError,
+  parseCustomFields,
+} from "@/lib/dynamic-schema";
 import { matchKey, normaliseText } from "@/lib/normalise";
 import {
   parseTagFormatSetting,
@@ -18,6 +22,29 @@ import {
   type BulkActionInput,
 } from "@/schemas/asset";
 import { ServiceError } from "@/server/services/admin-org";
+
+async function loadFieldDefs(departmentId: string) {
+  return prisma.fieldDefinition.findMany({
+    where: { departmentId, isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
+  });
+}
+
+async function resolveCustomFields(
+  departmentId: string,
+  categoryId: string,
+  raw: unknown,
+) {
+  const defs = await loadFieldDefs(departmentId);
+  try {
+    return parseCustomFields(defs, categoryId, raw ?? {});
+  } catch (error) {
+    if (error instanceof CustomFieldsValidationError) {
+      throw new ServiceError(error.message);
+    }
+    throw error;
+  }
+}
 
 function parseOptionalDate(value: string | null | undefined) {
   if (!value) return null;
@@ -143,6 +170,10 @@ export async function createAsset(
   input: AssetFormInput,
   userId: string,
 ): Promise<Asset> {
+  const { loadPlaceholdersIntoNormalise } = await import(
+    "@/server/queries/settings"
+  );
+  await loadPlaceholdersIntoNormalise();
   const fields = normaliseAssetFields(input);
   const status = await prisma.status.findFirst({
     where: { id: fields.statusId, deletedAt: null },
@@ -163,6 +194,11 @@ export async function createAsset(
   }
 
   const reviewReasons = dup.hasDuplicates ? dup.reasons : [];
+  const customFields = await resolveCustomFields(
+    fields.departmentId,
+    fields.categoryId,
+    input.customFields,
+  );
 
   const asset = await prisma.$transaction(async (tx) => {
     const created = await tx.asset.create({
@@ -172,7 +208,7 @@ export async function createAsset(
           fields.purchaseCost == null
             ? null
             : fields.purchaseCost.toFixed(2),
-        customFields: {},
+        customFields: customFields as Prisma.InputJsonValue,
         needsReview: reviewReasons.length > 0,
         reviewReasons,
         retiredAt: status.kind === "END_OF_LIFE" ? new Date() : null,
@@ -189,6 +225,7 @@ export async function createAsset(
           serialNumber: created.serialNumber,
           statusId: created.statusId,
           branchId: created.branchId,
+          customFields: created.customFields,
         },
         userId,
       },
@@ -211,6 +248,11 @@ export async function updateAsset(
   input: AssetFormInput,
   userId: string,
 ): Promise<Asset> {
+  const { loadPlaceholdersIntoNormalise } = await import(
+    "@/server/queries/settings"
+  );
+  await loadPlaceholdersIntoNormalise();
+
   const existing = await prisma.asset.findFirst({
     where: { id, deletedAt: null },
     include: { status: true },
@@ -255,6 +297,12 @@ export async function updateAsset(
     dup.reasons,
   );
 
+  const customFields = await resolveCustomFields(
+    fields.departmentId,
+    fields.categoryId,
+    input.customFields,
+  );
+
   const asset = await prisma.$transaction(async (tx) => {
     const updated = await tx.asset.update({
       where: { id },
@@ -264,6 +312,7 @@ export async function updateAsset(
           fields.purchaseCost == null
             ? null
             : fields.purchaseCost.toFixed(2),
+        customFields: customFields as Prisma.InputJsonValue,
         needsReview: reviewReasons.length > 0 || existing.needsReview,
         reviewReasons,
         retiredAt:
@@ -290,6 +339,15 @@ export async function updateAsset(
       if (existing[key] !== updated[key]) {
         changes[key] = { from: existing[key], to: updated[key] };
       }
+    }
+    if (
+      JSON.stringify(existing.customFields ?? {}) !==
+      JSON.stringify(updated.customFields ?? {})
+    ) {
+      changes.customFields = {
+        from: existing.customFields,
+        to: updated.customFields,
+      };
     }
 
     if (Object.keys(changes).length > 0) {
@@ -602,6 +660,12 @@ export async function duplicateAsset(id: string, userId: string) {
       warrantyExpiry: null,
       condition: existing.condition,
       remarks: existing.remarks,
+      customFields:
+        existing.customFields &&
+        typeof existing.customFields === "object" &&
+        !Array.isArray(existing.customFields)
+          ? (existing.customFields as Record<string, unknown>)
+          : {},
       acknowledgeDuplicates: true,
     },
     userId,

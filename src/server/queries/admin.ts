@@ -72,6 +72,31 @@ export async function listStatusesForDepartment(
   });
 }
 
+export async function listFieldDefinitionsForDepartment(
+  user: AuthUser,
+  departmentId: string,
+) {
+  assertDepartmentAccess(user, departmentId);
+  return prisma.fieldDefinition.findMany({
+    where: { departmentId },
+    orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
+    include: {
+      category: { select: { id: true, name: true, code: true } },
+    },
+  });
+}
+
+export async function listActiveFieldDefinitions(
+  user: AuthUser,
+  departmentId: string,
+) {
+  assertDepartmentAccess(user, departmentId);
+  return prisma.fieldDefinition.findMany({
+    where: { departmentId, isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
+  });
+}
+
 export async function listDeletedAssets(
   user: AuthUser,
   departmentId: string | null,

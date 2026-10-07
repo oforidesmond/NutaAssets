@@ -52,9 +52,11 @@ export default async function AssetsPage({ searchParams }: PageProps) {
           pageCount={list.pageCount}
           columns={list.columns}
           canMutate={can(session.user, "create")}
+          canExport={can(session.user, "export")}
           branches={options.branches}
           categories={options.categories}
           statuses={options.statuses}
+          fieldDefs={list.fieldDefs}
           savedViews={views.map((v) => ({
             id: v.id,
             name: v.name,
