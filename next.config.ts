@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Auth + cookies + department switcher need request-time rendering.
+  // Revisit Cache Components in a later phase once patterns settle.
   turbopack: {
     rules: {
       "*.css": {

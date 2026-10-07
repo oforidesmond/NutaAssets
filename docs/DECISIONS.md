@@ -1,0 +1,26 @@
+# Decisions & open questions
+
+Assumptions made during implementation. Confirm or correct anything marked **OPEN**.
+
+## Phase 1
+
+| ID | Decision | Rationale |
+|---|---|---|
+| D1 | Password hashing with **bcryptjs** (not argon2) | Portable on Vercel serverless; no native binary issues. |
+| D2 | Auth.js **JWT sessions** (no Prisma Auth adapter) | Credentials provider pairs cleanly with JWT; middleware can check session without DB. |
+| D3 | Full Prisma schema shipped in Phase 1; **SavedView** deferred to Phase 2 | Avoid early empty feature tables; schema still covers assets/recon/import. |
+| D4 | Tech branch code = **TJ** | Provisional from sample tags; **OPEN — please confirm**. |
+| D5 | Head Office = **HO**, Data Center = **DC** | Sensible defaults matching tag conventions; editable in Admin later. |
+| D6 | Custom field keys scoped per category in seed (`hostname__lt`, etc.) | Same label can exist on Laptop and System Unit without unique-key collisions. |
+| D7 | Super Admin seeded with `mustChangePassword: true` | Forces password change on first login. |
+| D8 | Operations department seeded `isActive: false` | Demonstrates multi-department without cluttering the switcher. |
+| D9 | Department switcher stored in cookie `assettrack_department` | Readable by Server Components for scoped queries. |
+| D10 | Prisma 7 + `@prisma/adapter-pg` | Matches current Neon/Vercel Postgres guidance. |
+| D11 | Disabled Next.js `cacheComponents` for Phase 1 | Conflicts with authenticated layouts / cookies; revisit later. |
+| D12 | Keep `middleware.ts` for now (Next 16 warns about `proxy`) | Auth.js JWT gate works; migrate to `proxy.ts` when Auth.js docs catch up. |
+
+## Open questions
+
+1. Confirm **Tech** branch code (`TJ`?).
+2. Confirm organisation display name (seeded as “Nuta Community Bank”).
+3. Confirm default tag template `NRB/{BRANCH}/EQ/{SEQ:4}` vs including department/category tokens.
