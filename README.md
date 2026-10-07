@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AssetTrack
 
-## Getting Started
+ICT (and multi-department) asset management for community banks — built for messy real-world Excel inventories and branch reconciliation.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Next.js (App Router) + TypeScript
+- Prisma + PostgreSQL (Neon / Vercel Postgres)
+- Auth.js (credentials + JWT)
+- Tailwind CSS + shadcn/ui
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Quick start
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Copy env and fill in values:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   cp .env.example .env
+   ```
 
-## Learn More
+2. Install dependencies:
 
-To learn more about Next.js, take a look at the following resources:
+   ```bash
+   npm install --legacy-peer-deps
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. Apply migrations and seed (ICT department, branches, statuses, Super Admin):
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   npx prisma migrate deploy
+   npm run db:seed
+   ```
 
-## Deploy on Vercel
+4. Run the app:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```bash
+   npm run dev
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+5. Sign in with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, then set a new password when prompted.
+
+## Scripts
+
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Dev server (Turbopack) |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run test` | Vitest unit tests |
+| `npm run db:migrate` | Create/apply migrations (dev) |
+| `npm run db:migrate:deploy` | Apply migrations (CI/prod) |
+| `npm run db:seed` | Seed Super Admin + ICT config |
+| `npm run db:studio` | Prisma Studio |
+
+## Environment
+
+See [`.env.example`](.env.example). Use pooled `DATABASE_URL` at runtime and `DIRECT_URL` for migrations when using Neon.
+
+## Docs
+
+- [Project brief](docs/PROJECT_BRIEF.md)
+- [Decisions](docs/DECISIONS.md)
+
+## Phase status
+
+**Phase 1 (Foundation)** — scaffold, schema/seed, auth, RBAC, app shell, audit plumbing, CI.
