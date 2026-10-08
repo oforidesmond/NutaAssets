@@ -73,6 +73,7 @@ Assumptions made during implementation. Confirm or correct anything marked **OPE
 | D40 | Performance: indexes on `warrantyExpiry`, `createdAt`, `(departmentId, deletedAt, needsReview)` + optional `pg_trgm` GIN | Dashboard/report filters and ILIKE search; Neon supports the extension. |
 | D41 | Playwright smoke in CI against seeded Postgres + `next start` | Brief §11; kept lean (login → add asset → recon path) for Hobby CI time. |
 | D42 | Seed sets `mustChangePassword=false` when `E2E_SKIP_PASSWORD_CHANGE=1` | Avoids JWT/session races on forced password change in smoke tests; production seed still forces change. |
+| D43 | Long forms silently resume via **per-user `localStorage` drafts** (no UI copy) | Quick leave/return UX for Add asset, Create recon exercise, Settings; not cross-device. |
 
 ## Open questions
 

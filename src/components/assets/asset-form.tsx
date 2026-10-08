@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,10 +27,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useFormDraft } from "@/hooks/use-form-draft";
 import {
   applyCustomFieldDefaults,
 } from "@/lib/dynamic-schema";
 import { fieldsForCategory, readCustomFieldsJson } from "@/lib/custom-fields";
+import { hasText } from "@/lib/form-draft";
 import { assetFormSchema, type AssetFormInput } from "@/schemas/asset";
 import {
   checkDuplicatesAction,
@@ -40,6 +42,37 @@ import {
   updateAssetAction,
 } from "@/server/actions/assets";
 import type { FieldType } from "@prisma/client";
+
+type AssetDraftValues = Omit<
+  AssetFormInput,
+  "acknowledgeDuplicates" | "updatedAt"
+> & {
+  purchaseOpen?: boolean;
+};
+
+function isAssetDraftEmpty(values: AssetDraftValues): boolean {
+  if (
+    [
+      values.assetTag,
+      values.serialNumber,
+      values.brand,
+      values.model,
+      values.assignedToText,
+      values.remarks,
+      values.purchaseDate,
+      values.purchaseCost,
+      values.warrantyExpiry,
+      values.categoryId,
+      values.branchId,
+      values.locationId,
+    ].some(hasText)
+  ) {
+    return false;
+  }
+  if (values.condition) return false;
+  const cf = values.customFields ?? {};
+  return !Object.values(cf).some(hasText);
+}
 
 type Option = { id: string; name: string; code?: string };
 type StatusOption = Option & { color: string; isDefault?: boolean };
@@ -141,6 +174,153 @@ export function AssetForm({
   const serialNumber = form.watch("serialNumber");
   const customFields = form.watch("customFields") ?? {};
 
+  const draftKey =
+    mode === "edit" && assetId
+      ? `asset:edit:${assetId}`
+      : `asset:create:${departmentId}`;
+
+  const [draftValues, setDraftValues] = useState<AssetDraftValues>(() => {
+    const v = form.getValues();
+    const { acknowledgeDuplicates: _a, updatedAt: _u, ...rest } = v;
+    void _a;
+    void _u;
+    return { ...rest, purchaseOpen };
+  });
+
+  const editBaseline = useMemo(() => {
+    if (mode !== "edit") return null;
+    return JSON.stringify({
+      categoryId: defaults?.categoryId ?? "",
+      branchId: defaults?.branchId ?? "",
+      locationId: defaults?.locationId ?? null,
+      assetTag: defaults?.assetTag ?? "",
+      serialNumber: defaults?.serialNumber ?? "",
+      brand: defaults?.brand ?? "",
+      model: defaults?.model ?? "",
+      statusId: defaultStatus,
+      assignedToText: defaults?.assignedToText ?? "",
+      purchaseDate: defaults?.purchaseDate ?? "",
+      purchaseCost: defaults?.purchaseCost ?? "",
+      warrantyExpiry: defaults?.warrantyExpiry ?? "",
+      condition: defaults?.condition ?? null,
+      remarks: defaults?.remarks ?? "",
+      customFields: initialCustom,
+    });
+  }, [mode, defaults, defaultStatus, initialCustom]);
+
+  const restoreAssetDraft = useCallback(
+    (draft: AssetDraftValues) => {
+      const categoryOk = categories.some((c) => c.id === draft.categoryId);
+      const branchOk = branches.some((b) => b.id === draft.branchId);
+      const statusOk = statuses.some((s) => s.id === draft.statusId);
+      const nextCategoryId = categoryOk ? draft.categoryId : "";
+      const nextBranchId = branchOk ? draft.branchId : "";
+      const nextStatusId = statusOk ? draft.statusId : defaultStatus;
+      const nextLocationId = branchOk ? (draft.locationId ?? null) : null;
+      const { purchaseOpen: draftPurchaseOpen, ...draftFields } = draft;
+
+      form.reset({
+        departmentId,
+        categoryId: nextCategoryId,
+        branchId: nextBranchId,
+        locationId: nextLocationId,
+        assetTag: draftFields.assetTag ?? "",
+        serialNumber: draftFields.serialNumber ?? "",
+        brand: draftFields.brand ?? "",
+        model: draftFields.model ?? "",
+        statusId: nextStatusId,
+        assignedToText: draftFields.assignedToText ?? "",
+        purchaseDate: draftFields.purchaseDate ?? "",
+        purchaseCost: draftFields.purchaseCost ?? "",
+        warrantyExpiry: draftFields.warrantyExpiry ?? "",
+        condition: draftFields.condition ?? null,
+        remarks: draftFields.remarks ?? "",
+        customFields: draft.customFields ?? {},
+        acknowledgeDuplicates: false,
+        updatedAt: updatedAt ?? null,
+      });
+      setDraftValues({
+        ...draftFields,
+        departmentId,
+        categoryId: nextCategoryId,
+        branchId: nextBranchId,
+        locationId: nextLocationId,
+        statusId: nextStatusId,
+        purchaseOpen:
+          draftPurchaseOpen != null
+            ? Boolean(draftPurchaseOpen)
+            : Boolean(draft.purchaseDate || draft.purchaseCost),
+      });
+      if (draftPurchaseOpen != null) {
+        setPurchaseOpen(Boolean(draftPurchaseOpen));
+      } else if (draft.purchaseDate || draft.purchaseCost) {
+        setPurchaseOpen(true);
+      }
+    },
+    [branches, categories, defaultStatus, departmentId, form, statuses, updatedAt],
+  );
+
+  const isDraftEmpty = useCallback(
+    (v: AssetDraftValues) => {
+      if (isAssetDraftEmpty(v)) return true;
+      if (!editBaseline) return false;
+      const { purchaseOpen: _po, departmentId: _d, ...comparable } = v;
+      void _po;
+      void _d;
+      return JSON.stringify(comparable) === editBaseline;
+    },
+    [editBaseline],
+  );
+
+  const { clearDraft } = useFormDraft({
+    draftKey,
+    values: draftValues,
+    isEmpty: isDraftEmpty,
+    onRestore: restoreAssetDraft,
+  });
+
+  // Push form changes into draft state only when content actually changes
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      const {
+        acknowledgeDuplicates: _a,
+        updatedAt: _u,
+        ...rest
+      } = value as AssetFormInput;
+      void _a;
+      void _u;
+      const next: AssetDraftValues = {
+        departmentId: rest.departmentId ?? departmentId,
+        categoryId: rest.categoryId ?? "",
+        branchId: rest.branchId ?? "",
+        locationId: rest.locationId ?? null,
+        assetTag: rest.assetTag ?? "",
+        serialNumber: rest.serialNumber ?? "",
+        brand: rest.brand ?? "",
+        model: rest.model ?? "",
+        statusId: rest.statusId ?? "",
+        assignedToText: rest.assignedToText ?? "",
+        purchaseDate: rest.purchaseDate ?? "",
+        purchaseCost: rest.purchaseCost ?? "",
+        warrantyExpiry: rest.warrantyExpiry ?? "",
+        condition: rest.condition ?? null,
+        remarks: rest.remarks ?? "",
+        customFields: rest.customFields ?? {},
+        purchaseOpen,
+      };
+      setDraftValues((prev) =>
+        JSON.stringify(prev) === JSON.stringify(next) ? prev : next,
+      );
+    });
+    return () => subscription.unsubscribe();
+  }, [form, departmentId, purchaseOpen]);
+
+  useEffect(() => {
+    setDraftValues((prev) =>
+      prev.purchaseOpen === purchaseOpen ? prev : { ...prev, purchaseOpen },
+    );
+  }, [purchaseOpen]);
+
   const scopedFields = useMemo(
     () => fieldsForCategory(fieldDefs, categoryId || null),
     [fieldDefs, categoryId],
@@ -158,19 +338,36 @@ export function AssetForm({
     for (const [k, v] of Object.entries(next)) {
       if (allowed.has(k)) cleaned[k] = v;
     }
-    form.setValue("customFields", cleaned);
+    const current = form.getValues("customFields") ?? {};
+    if (JSON.stringify(current) !== JSON.stringify(cleaned)) {
+      form.setValue("customFields", cleaned);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId]);
 
   useEffect(() => {
     if (!branchId) {
-      setLocations([]);
+      setLocations((prev) => (prev.length === 0 ? prev : []));
       return;
     }
+    let cancelled = false;
     void getLocationsForBranchAction(branchId).then((res) => {
-      if (res.ok && res.data) setLocations(res.data.items);
+      if (cancelled || !res.ok || !res.data) return;
+      setLocations(res.data.items);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [branchId]);
+
+  useEffect(() => {
+    const locId = form.getValues("locationId");
+    if (!locId || locations.length === 0) return;
+    if (!locations.some((l) => l.id === locId)) {
+      form.setValue("locationId", null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locations]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -256,6 +453,7 @@ export function AssetForm({
       }
 
       toast.success(mode === "edit" ? "Asset updated" : "Asset created");
+      clearDraft();
       if (addAnother && result.data) {
         form.reset({
           ...form.getValues(),

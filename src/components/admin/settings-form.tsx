@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -8,18 +8,56 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useFormDraft } from "@/hooks/use-form-draft";
 import { updateSettingsAction } from "@/server/actions/admin";
 import type { SettingsSnapshot } from "@/server/services/admin-settings";
 
-export function SettingsForm({ initial }: { initial: SettingsSnapshot }) {
-  const [pending, startTransition] = useTransition();
-  const [form, setForm] = useState({
+type SettingsDraft = {
+  orgName: string;
+  orgLogoUrl: string;
+  tagFormat: string;
+  placeholders: string;
+  attachmentsEnabled: boolean;
+};
+
+function snapshotToDraft(initial: SettingsSnapshot): SettingsDraft {
+  return {
     orgName: initial.orgName,
     orgLogoUrl: initial.orgLogoUrl ?? "",
     tagFormat: initial.tagFormat,
     placeholders: initial.placeholders.join("\n"),
     attachmentsEnabled: initial.attachmentsEnabled,
+  };
+}
+
+export function SettingsForm({ initial }: { initial: SettingsSnapshot }) {
+  const [pending, startTransition] = useTransition();
+  const [form, setForm] = useState(() => snapshotToDraft(initial));
+  const [baseline, setBaseline] = useState(() =>
+    JSON.stringify(snapshotToDraft(initial)),
+  );
+
+  const restoreDraft = useCallback((draft: SettingsDraft) => {
+    setForm({
+      orgName: draft.orgName ?? "",
+      orgLogoUrl: draft.orgLogoUrl ?? "",
+      tagFormat: draft.tagFormat ?? "",
+      placeholders: draft.placeholders ?? "",
+      attachmentsEnabled: Boolean(draft.attachmentsEnabled),
+    });
+  }, []);
+
+  const { clearDraft } = useFormDraft({
+    draftKey: "admin:settings",
+    values: form,
+    isEmpty: (v) => JSON.stringify(v) === baseline,
+    onRestore: restoreDraft,
   });
+
+  const canSave = useMemo(
+    () => Boolean(form.orgName.trim() && form.tagFormat.trim()),
+    [form.orgName, form.tagFormat],
+  );
 
   function save() {
     startTransition(async () => {
@@ -34,6 +72,8 @@ export function SettingsForm({ initial }: { initial: SettingsSnapshot }) {
         toast.error(result.error ?? "Could not save settings");
         return;
       }
+      clearDraft();
+      setBaseline(JSON.stringify(form));
       toast.success("Settings saved");
     });
   }
@@ -119,7 +159,7 @@ export function SettingsForm({ initial }: { initial: SettingsSnapshot }) {
         </label>
       </section>
 
-      <Button onClick={save} disabled={pending || !form.orgName || !form.tagFormat}>
+      <Button onClick={save} disabled={pending || !canSave}>
         Save settings
       </Button>
     </div>

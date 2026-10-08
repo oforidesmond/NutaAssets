@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -16,10 +16,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useFormDraft } from "@/hooks/use-form-draft";
+import { hasText } from "@/lib/form-draft";
 import { createExerciseAction } from "@/server/actions/reconciliation";
 
 type Dept = { id: string; name: string; code: string };
 type Branch = { id: string; name: string; code: string };
+
+type ExerciseDraft = {
+  departmentId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  notes: string;
+  scopeBranchIds: string[];
+};
 
 export function CreateExerciseForm({
   departments,
@@ -45,6 +56,43 @@ export function CreateExerciseForm({
     branches.map((b) => b.id),
   );
 
+  const draftKey = "recon:new";
+  const draftValues = useMemo<ExerciseDraft>(
+    () => ({
+      departmentId,
+      name,
+      startDate,
+      endDate,
+      notes,
+      scopeBranchIds,
+    }),
+    [departmentId, name, startDate, endDate, notes, scopeBranchIds],
+  );
+
+  const restoreDraft = useCallback(
+    (draft: ExerciseDraft) => {
+      const deptOk = departments.some((d) => d.id === draft.departmentId);
+      if (deptOk) setDepartmentId(draft.departmentId);
+      setName(draft.name ?? "");
+      if (hasText(draft.startDate)) setStartDate(draft.startDate);
+      setEndDate(draft.endDate ?? "");
+      setNotes(draft.notes ?? "");
+      const validIds = new Set(branches.map((b) => b.id));
+      const scoped = (draft.scopeBranchIds ?? []).filter((id) =>
+        validIds.has(id),
+      );
+      setScopeBranchIds(scoped);
+    },
+    [branches, departments],
+  );
+
+  const { clearDraft } = useFormDraft({
+    draftKey,
+    values: draftValues,
+    isEmpty: (v) => !hasText(v.name) && !hasText(v.notes) && !hasText(v.endDate),
+    onRestore: restoreDraft,
+  });
+
   function toggleBranch(id: string) {
     setScopeBranchIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
@@ -66,6 +114,7 @@ export function CreateExerciseForm({
         toast.error(res.error ?? "Could not create exercise.");
         return;
       }
+      clearDraft();
       toast.success("Exercise created as draft.");
       router.push(`/reconciliation/${res.data!.id}`);
     });
