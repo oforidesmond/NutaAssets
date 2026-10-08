@@ -58,7 +58,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cfColumnId, readCustomFieldsJson } from "@/lib/custom-fields";
-import { buildAssetsCsv, downloadCsv } from "@/lib/export-csv";
+import { buildAssetsCsv, downloadCsv } from "@/lib/export/csv";
+import { downloadLabelSheet } from "@/lib/export/labels";
+import { downloadAssetsPdf } from "@/lib/export/pdf";
+import { downloadAssetsXlsx } from "@/lib/export/xlsx";
 import { ALL_ASSET_COLUMNS } from "@/schemas/asset";
 import {
   assignAssetAction,
@@ -603,43 +606,101 @@ export function AssetsTable({
 
         <div className="flex flex-wrap items-center gap-2">
           {canExport && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={pending}
-              onClick={() =>
-                startTransition(async () => {
-                  const filters: Record<string, string> = {};
-                  searchParams.forEach((v, k) => {
-                    if (k !== "page" && k !== "pageSize" && k !== "columns") {
-                      filters[k] = v;
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={pending}>
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuLabel>
+                  {selectedIds.length > 0
+                    ? `Selection (${selectedIds.length})`
+                    : "Current filters"}
+                </DropdownMenuLabel>
+                {(
+                  [
+                    ["csv", "CSV"],
+                    ["xlsx", "Excel (.xlsx)"],
+                    ["pdf", "PDF"],
+                    ["labels", "QR label sheet"],
+                  ] as const
+                ).map(([fmt, label]) => (
+                  <DropdownMenuItem
+                    key={fmt}
+                    onClick={() =>
+                      startTransition(async () => {
+                        const filters: Record<string, string> = {};
+                        searchParams.forEach((v, k) => {
+                          if (
+                            k !== "page" &&
+                            k !== "pageSize" &&
+                            k !== "columns"
+                          ) {
+                            filters[k] = v;
+                          }
+                        });
+                        const res = await exportAssetsAction({
+                          filters,
+                          columns: visibleColumns,
+                          ids:
+                            selectedIds.length > 0 ? selectedIds : undefined,
+                        });
+                        if (!res.ok || !res.data) {
+                          toast.error(res.error ?? "Export failed");
+                          return;
+                        }
+                        const stamp = new Date().toISOString().slice(0, 10);
+                        try {
+                          if (fmt === "csv") {
+                            downloadCsv(
+                              `assets-${stamp}.csv`,
+                              buildAssetsCsv(
+                                res.data.rows,
+                                res.data.columns,
+                                res.data.fieldDefs,
+                              ),
+                            );
+                          } else if (fmt === "xlsx") {
+                            await downloadAssetsXlsx(
+                              `assets-${stamp}.xlsx`,
+                              res.data.rows,
+                              res.data.columns,
+                              res.data.fieldDefs,
+                            );
+                          } else if (fmt === "pdf") {
+                            downloadAssetsPdf(
+                              `assets-${stamp}.pdf`,
+                              res.data.rows,
+                              res.data.columns,
+                              res.data.fieldDefs,
+                            );
+                          } else {
+                            await downloadLabelSheet(
+                              `labels-${stamp}.pdf`,
+                              res.data.rows,
+                              { baseUrl: window.location.origin },
+                            );
+                          }
+                          toast.success(
+                            `Exported ${res.data.rows.length} row(s)`,
+                          );
+                        } catch (error) {
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : "Export failed",
+                          );
+                        }
+                      })
                     }
-                  });
-                  const res = await exportAssetsAction({
-                    filters,
-                    columns: visibleColumns,
-                    ids: selectedIds.length > 0 ? selectedIds : undefined,
-                  });
-                  if (!res.ok || !res.data) {
-                    toast.error(res.error ?? "Export failed");
-                    return;
-                  }
-                  const csv = buildAssetsCsv(
-                    res.data.rows,
-                    res.data.columns,
-                    res.data.fieldDefs,
-                  );
-                  downloadCsv(
-                    `assets-${new Date().toISOString().slice(0, 10)}.csv`,
-                    csv,
-                  );
-                  toast.success(`Exported ${res.data.rows.length} row(s)`);
-                })
-              }
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+                  >
+                    {label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

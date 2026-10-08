@@ -69,4 +69,6 @@ See [`.env.example`](.env.example). Use pooled `DATABASE_URL` at runtime and `DI
 
 **Phase 3 (Flexibility)** — custom field manager + dynamic form/filter/table/CSV export; department admin with config clone; users & roles admin; settings (org, tag template, placeholders).
 
-Deferred to later phases: full import wizard / styled Excel-PDF / labels / scan (P4), reconciliation (P5), dashboard KPIs (P6).
+**Phase 4 (Import/Export)** — Excel/CSV import wizard (header detect, mapping, normalisation, duplicates, chunked import, undo); Excel/CSV/PDF export; legacy branch-sheet export; QR label sheets; camera scan-to-fill on asset forms.
+
+Deferred to later phases: reconciliation (P5), dashboard KPIs / reports polish / e2e (P6).

@@ -83,6 +83,12 @@ enum ReconciliationResult {
   NEW_UNLISTED
 }
 
+enum ImportJobStatus {
+  PENDING
+  COMPLETED
+  UNDONE
+}
+
 model Department {
   id          String   @id @default(cuid())
   name        String   @unique
@@ -265,6 +271,7 @@ model Asset {
   reviewReasons  String[]   @default([])
   retiredAt      DateTime?
   deletedAt      DateTime?
+  importJobId    String?
   createdById    String?
   updatedById    String?
   createdAt      DateTime   @default(now())
@@ -276,6 +283,7 @@ model Asset {
   location          Location?            @relation(fields: [locationId], references: [id])
   status            Status               @relation(fields: [statusId], references: [id])
   assignedTo        Person?              @relation(fields: [assignedToId], references: [id])
+  importJob         ImportJob?           @relation(fields: [importJobId], references: [id])
   createdBy         User?                @relation("AssetCreatedBy", fields: [createdById], references: [id])
   updatedBy         User?                @relation("AssetUpdatedBy", fields: [updatedById], references: [id])
   events            AssetEvent[]
@@ -287,6 +295,7 @@ model Asset {
   @@index([assignedToText])
   @@index([needsReview])
   @@index([deletedAt])
+  @@index([importJobId])
 }
 
 model FieldDefinition {
@@ -412,19 +421,23 @@ model ReconciliationItem {
 }
 
 model ImportJob {
-  id        String   @id @default(cuid())
-  userId    String
-  fileName  String
-  mapping   Json
-  totalRows Int      @default(0)
-  created   Int      @default(0)
-  updated   Int      @default(0)
-  skipped   Int      @default(0)
-  flagged   Int      @default(0)
-  errors    Json?
-  createdAt DateTime @default(now())
+  id           String          @id @default(cuid())
+  userId       String
+  departmentId String?
+  fileName     String
+  mapping      Json
+  totalRows    Int             @default(0)
+  created      Int             @default(0)
+  updated      Int             @default(0)
+  skipped      Int             @default(0)
+  flagged      Int             @default(0)
+  errors       Json?
+  status       ImportJobStatus @default(PENDING)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  assets Asset[]
 }
 
 model Setting {

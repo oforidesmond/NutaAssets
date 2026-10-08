@@ -42,6 +42,17 @@ Assumptions made during implementation. Confirm or correct anything marked **OPE
 | D24 | Custom column ids use prefix `cf:` + field `key` | Avoid collisions with core column ids in list/saved views. |
 | D25 | Department CRUD/clone is **Super Admin only** | Hard org config; Dept Admins manage within their dept. |
 
+## Phase 4
+
+| ID | Decision | Rationale |
+|---|---|---|
+| D26 | Parse Excel with **xlsx (SheetJS)** in the browser; styled Excel export with **exceljs**; CSV via **papaparse**; PDF/labels with **jspdf + qrcode**; camera scan with **html5-qrcode** | Matches brief stack choices; parse stays client-side for the 4.5 MB body limit. |
+| D27 | Import chunks = **200** rows; dry-run validates only; commit creates `ImportJob` then processes chunks | Same timeout budget as bulk mutations (D17). |
+| D28 | Undo = soft-delete assets with `importJobId`; default duplicate policy = **import and flag** (`needsReview`) | Enables undo without hard deletes; matches brief default. |
+| D29 | Mapping templates in `Setting.import_mappings`; status aliases in `Setting.status_aliases` | No new tables; editable later from Admin if needed. |
+| D30 | QR labels encode `/a/{assetId}`; sample file path uses a **space** (`ICT_Asset_Inventory_Sheet Nwabiagya.xlsx`) | Short public redirect under auth; tests use the real on-disk filename. |
+| D31 | Import rate limit = **30 chunk requests / user / minute** (in-memory) | Cheap Hobby-tier guard; resets on cold start. |
+
 ## Open questions
 
 1. Confirm **Tech** branch code (`TJ`?).

@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { toast } from "sonner";
 
+import { ScanDialog } from "@/components/assets/scan-dialog";
 import { DynamicField } from "@/components/forms/dynamic-field";
 import { Button } from "@/components/ui/button";
 import {
@@ -89,6 +90,9 @@ export function AssetForm({
     serialHits: { id: string; serialNumber: string | null }[];
   } | null>(null);
   const [acknowledge, setAcknowledge] = useState(false);
+  const [scanTarget, setScanTarget] = useState<"assetTag" | "serialNumber" | null>(
+    null,
+  );
   const [purchaseOpen, setPurchaseOpen] = useState(
     Boolean(defaults?.purchaseDate || defaults?.purchaseCost),
   );
@@ -320,7 +324,7 @@ export function AssetForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Asset tag</FormLabel>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <FormControl>
                       <Input {...field} value={field.value ?? ""} />
                     </FormControl>
@@ -331,6 +335,13 @@ export function AssetForm({
                       disabled={pending}
                     >
                       Suggest
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setScanTarget("assetTag")}
+                    >
+                      Scan
                     </Button>
                   </div>
                   <FormMessage />
@@ -343,9 +354,18 @@ export function AssetForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Serial number</FormLabel>
-                  <FormControl>
-                    <Input {...field} value={field.value ?? ""} />
-                  </FormControl>
+                  <div className="flex flex-wrap gap-2">
+                    <FormControl>
+                      <Input {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setScanTarget("serialNumber")}
+                    >
+                      Scan
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -676,6 +696,23 @@ export function AssetForm({
           </Button>
         </div>
       </form>
+      <ScanDialog
+        open={scanTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setScanTarget(null);
+        }}
+        title={
+          scanTarget === "serialNumber"
+            ? "Scan serial number"
+            : "Scan asset tag"
+        }
+        onScan={(value) => {
+          if (scanTarget) {
+            form.setValue(scanTarget, value, { shouldDirty: true });
+          }
+          setScanTarget(null);
+        }}
+      />
     </Form>
   );
 }

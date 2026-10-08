@@ -81,6 +81,17 @@ const CATEGORY_ALIASES: Record<string, string> = {
   SERVER: "Server",
 };
 
+const STATUS_ALIASES: Record<string, string> = {
+  ACTIVE: "Active",
+  FAULTY: "Faulty",
+  "IN REPAIR": "In Repair",
+  INREPAIR: "In Repair",
+  INACTIVE: "Inactive",
+  RETIRED: "Retired",
+  DISPOSED: "Disposed",
+  LOST: "Lost",
+};
+
 async function main() {
   const adminEmail = (process.env.SEED_ADMIN_EMAIL ?? "admin@assettrack.local")
     .toLowerCase()
@@ -369,6 +380,18 @@ async function main() {
     where: { key: "category_aliases" },
     update: { value: CATEGORY_ALIASES },
     create: { key: "category_aliases", value: CATEGORY_ALIASES },
+  });
+
+  await prisma.setting.upsert({
+    where: { key: "status_aliases" },
+    update: { value: STATUS_ALIASES },
+    create: { key: "status_aliases", value: STATUS_ALIASES },
+  });
+
+  await prisma.setting.upsert({
+    where: { key: "import_mappings" },
+    update: {},
+    create: { key: "import_mappings", value: [] },
   });
 
   await prisma.setting.upsert({

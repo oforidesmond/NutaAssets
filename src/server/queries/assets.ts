@@ -39,7 +39,11 @@ export function parseAssetListParams(
   };
 
   const page = Math.max(1, Number(get("page") ?? 1) || 1);
-  const pageSize = Math.min(100, Math.max(10, Number(get("pageSize") ?? 25) || 25));
+  // Cap at 2000 for export; list UI typically uses ≤100
+  const pageSize = Math.min(
+    2000,
+    Math.max(10, Number(get("pageSize") ?? 25) || 25),
+  );
   const sortDir = get("sortDir") === "asc" ? "asc" : "desc";
   const columnsRaw = get("columns");
   const columns = columnsRaw

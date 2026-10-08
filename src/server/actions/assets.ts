@@ -370,6 +370,7 @@ export async function exportAssetsAction(input: {
 }): Promise<
   ActionResult<{
     rows: {
+      id: string;
       assetTag: string | null;
       serialNumber: string | null;
       brand: string | null;
@@ -383,7 +384,7 @@ export async function exportAssetsAction(input: {
       category: { name: string };
       branch: { name: string };
       location: { name: string } | null;
-      status: { name: string };
+      status: { name: string; color?: string };
     }[];
     columns: string[];
     fieldDefs: {
@@ -410,7 +411,7 @@ export async function exportAssetsAction(input: {
           category: { select: { name: true } },
           branch: { select: { name: true } },
           location: { select: { name: true } },
-          status: { select: { name: true } },
+          status: { select: { name: true, color: true } },
         },
       });
       const deptIds = [...new Set(assets.map((a) => a.departmentId))];
@@ -427,6 +428,7 @@ export async function exportAssetsAction(input: {
         ok: true,
         data: {
           rows: assets.map((a) => ({
+            id: a.id,
             assetTag: a.assetTag,
             serialNumber: a.serialNumber,
             brand: a.brand,
@@ -459,6 +461,7 @@ export async function exportAssetsAction(input: {
       ok: true,
       data: {
         rows: list.rows.map((a) => ({
+          id: a.id,
           assetTag: a.assetTag,
           serialNumber: a.serialNumber,
           brand: a.brand,
@@ -472,7 +475,7 @@ export async function exportAssetsAction(input: {
           category: { name: a.category.name },
           branch: { name: a.branch.name },
           location: a.location ? { name: a.location.name } : null,
-          status: { name: a.status.name },
+          status: { name: a.status.name, color: a.status.color },
         })),
         columns: input.columns,
         fieldDefs: list.fieldDefs,
