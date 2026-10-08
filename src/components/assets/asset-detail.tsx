@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftRight,
+  CheckCircle2,
   Pencil,
   Trash2,
   UserRound,
@@ -41,6 +42,7 @@ import {
   deleteAssetAction,
   transferAssetAction,
 } from "@/server/actions/assets";
+import { markAssetVerifiedAction } from "@/server/actions/reconciliation";
 
 type Event = {
   id: string;
@@ -100,6 +102,19 @@ type Sibling = {
   branch?: { name: string };
 };
 
+type ReconHistoryItem = {
+  id: string;
+  result: string | null;
+  note: string | null;
+  verifiedAt: string | Date | null;
+  entry: {
+    id: string;
+    branch: { name: string; code: string };
+    exercise: { id: string; name: string; status: string };
+  };
+  verifiedBy: { name: string } | null;
+};
+
 type Props = {
   asset: Asset;
   sameAssignee: Sibling[];
@@ -109,6 +124,7 @@ type Props = {
   statuses: { id: string; name: string; color: string }[];
   branches: { id: string; name: string }[];
   fieldDefs?: FieldDef[];
+  reconHistory?: ReconHistoryItem[];
 };
 
 export function AssetDetail({
@@ -120,6 +136,7 @@ export function AssetDetail({
   statuses,
   branches,
   fieldDefs = [],
+  reconHistory = [],
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -216,6 +233,26 @@ export function AssetDetail({
             >
               <UserRound className="h-3.5 w-3.5" />
               Assign
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={() => {
+                startTransition(async () => {
+                  const res = await markAssetVerifiedAction({
+                    assetId: asset.id,
+                  });
+                  if (!res.ok) toast.error(res.error ?? "Failed");
+                  else {
+                    toast.success("Marked verified today");
+                    router.refresh();
+                  }
+                });
+              }}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Mark verified today
             </Button>
             <Button
               variant="destructive"
@@ -421,9 +458,40 @@ export function AssetDetail({
         </TabsContent>
 
         <TabsContent value="recon" className="pt-4">
-          <p className="text-sm text-muted-foreground">
-            Reconciliation history will appear here in Phase 5.
-          </p>
+          {reconHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              This asset has not appeared on a reconciliation sheet yet.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {reconHistory.map((row) => (
+                <li
+                  key={row.id}
+                  className="rounded-lg border bg-card p-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <Link
+                      href={`/reconciliation/${row.entry.exercise.id}/${row.entry.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {row.entry.exercise.name}
+                    </Link>
+                    <span className="text-muted-foreground">
+                      {formatDateTime(row.verifiedAt)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">
+                    {row.entry.branch.name}
+                    {row.result ? ` · ${row.result.replace(/_/g, " ")}` : " · pending"}
+                    {row.verifiedBy ? ` · ${row.verifiedBy.name}` : ""}
+                  </p>
+                  {row.note && (
+                    <p className="mt-1 text-muted-foreground">Note: {row.note}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </TabsContent>
       </Tabs>
 

@@ -53,6 +53,15 @@ Assumptions made during implementation. Confirm or correct anything marked **OPE
 | D30 | QR labels encode `/a/{assetId}`; sample file path uses a **space** (`ICT_Asset_Inventory_Sheet Nwabiagya.xlsx`) | Short public redirect under auth; tests use the real on-disk filename. |
 | D31 | Import rate limit = **30 chunk requests / user / minute** (in-memory) | Cheap Hobby-tier guard; resets on cold start. |
 
+## Phase 5
+
+| ID | Decision | Rationale |
+|---|---|---|
+| D32 | `ReconciliationItem.result` is **nullable** (`null` = not yet verified) | Branch sheets pre-load expected assets before an officer taps Found/Missing/etc. |
+| D33 | `NEW_UNLISTED` stores draft fields in `observed`; **`createAsset` runs on approve/apply** | Rejecting a sheet must not leave orphan assets in the register. |
+| D34 | Approve shows a **diff preview**, then applies in **chunks of 200**, then marks `APPROVED` | Same Hobby timeout budget as D17/D27; officers see what will change before commit. |
+| D35 | Typed `observed` shape: `{ statusId?, locationId?, assignedToText?, serialNumber?, brand?, model?, remarks?, categoryId?, assetTag? }` | Only fields that differ (or full draft for unlisted); shared by verify UI, preview, and apply. |
+
 ## Open questions
 
 1. Confirm **Tech** branch code (`TJ`?).

@@ -28,6 +28,13 @@ const admin = {
   branchIds: [],
 };
 
+const deptAdmin = {
+  id: "u4",
+  role: "DEPT_ADMIN" as const,
+  departmentIds: ["d1"],
+  branchIds: [],
+};
+
 describe("authorize", () => {
   it("allows viewers to read", () => {
     expect(() => authorize(viewer, "read", "asset")).not.toThrow();
@@ -47,5 +54,27 @@ describe("authorize", () => {
   it("scopes departments for non-super-admins", () => {
     expect(scopedDepartmentIds(editor)).toEqual(["d1"]);
     expect(scopedDepartmentIds(admin)).toBeNull();
+  });
+
+  it("allows editors to reconcile but not approve", () => {
+    expect(() => authorize(editor, "reconcile", "reconciliation")).not.toThrow();
+    expect(can(editor, "approve")).toBe(false);
+    expect(() => authorize(editor, "approve", "reconciliation")).toThrow(
+      AuthorizationError,
+    );
+  });
+
+  it("allows dept admins to reconcile and approve", () => {
+    expect(() =>
+      authorize(deptAdmin, "reconcile", "reconciliation"),
+    ).not.toThrow();
+    expect(() =>
+      authorize(deptAdmin, "approve", "reconciliation"),
+    ).not.toThrow();
+  });
+
+  it("blocks viewers from reconcile and approve", () => {
+    expect(can(viewer, "reconcile")).toBe(false);
+    expect(can(viewer, "approve")).toBe(false);
   });
 });

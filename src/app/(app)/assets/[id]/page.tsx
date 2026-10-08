@@ -9,6 +9,7 @@ import {
   getAssetDetail,
   getAssetFilterOptions,
 } from "@/server/queries/assets";
+import { getAssetReconciliationHistory } from "@/server/queries/reconciliation";
 
 export const metadata: Metadata = { title: "Asset" };
 
@@ -21,9 +22,10 @@ export default async function AssetDetailPage({ params }: PageProps) {
   if (!session?.user) redirect("/login");
 
   const { id } = await params;
-  const [detail, options] = await Promise.all([
+  const [detail, options, reconHistory] = await Promise.all([
     getAssetDetail(session.user, id),
     getAssetFilterOptions(session.user),
+    getAssetReconciliationHistory(session.user, id),
   ]);
 
   if (!detail) notFound();
@@ -55,6 +57,18 @@ export default async function AssetDetailPage({ params }: PageProps) {
       statuses={options.statuses}
       branches={options.branches}
       fieldDefs={fieldDefs}
+      reconHistory={reconHistory.map((r) => ({
+        id: r.id,
+        result: r.result,
+        note: r.note,
+        verifiedAt: r.verifiedAt?.toISOString() ?? null,
+        entry: {
+          id: r.entry.id,
+          branch: r.entry.branch,
+          exercise: r.entry.exercise,
+        },
+        verifiedBy: r.verifiedBy,
+      }))}
     />
   );
 }

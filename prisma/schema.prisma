@@ -402,16 +402,16 @@ model ReconciliationEntry {
 }
 
 model ReconciliationItem {
-  id           String               @id @default(cuid())
+  id           String                @id @default(cuid())
   entryId      String
   assetId      String?
-  result       ReconciliationResult
+  result       ReconciliationResult? // null = not yet verified (D32)
   observed     Json?
   note         String?
   verifiedById String?
   verifiedAt   DateTime?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
 
   entry      ReconciliationEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
   asset      Asset?              @relation(fields: [assetId], references: [id])
