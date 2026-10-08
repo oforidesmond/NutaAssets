@@ -8,6 +8,7 @@ ICT (and multi-department) asset management for community banks — built for me
 - Prisma + PostgreSQL (Neon / Vercel Postgres)
 - Auth.js (credentials + JWT)
 - Tailwind CSS + shadcn/ui
+- Recharts, TanStack Table, React Hook Form + Zod
 
 ## Quick start
 
@@ -47,6 +48,7 @@ ICT (and multi-department) asset management for community banks — built for me
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test` | Vitest unit tests |
+| `npm run test:e2e` | Playwright smoke tests |
 | `npm run db:migrate` | Create/apply migrations (dev) |
 | `npm run db:migrate:deploy` | Apply migrations (CI/prod) |
 | `npm run db:seed` | Seed Super Admin + ICT config |
@@ -60,6 +62,8 @@ See [`.env.example`](.env.example). Use pooled `DATABASE_URL` at runtime and `DI
 
 - [Project brief](docs/PROJECT_BRIEF.md)
 - [Decisions](docs/DECISIONS.md)
+- [User guide](docs/USER_GUIDE.md)
+- [Deployment (Vercel + Postgres)](docs/DEPLOYMENT.md)
 
 ## Phase status
 
@@ -73,4 +77,4 @@ See [`.env.example`](.env.example). Use pooled `DATABASE_URL` at runtime and `DI
 
 **Phase 5 (Reconciliation)** — exercises, branch sheets (mobile verify / scan / unlisted), submit → diff preview → chunked approve/apply, legacy sheet export, asset recon history + mark verified today.
 
-Deferred to later phases: dashboard KPIs / reports polish / e2e (P6).
+**Phase 6 (Insights & polish)** — dashboard KPIs/charts/panels; prebuilt reports; needs-review centre with one-click fixes; ⌘/Ctrl+K command palette; help page; a11y/perf indexes; Playwright e2e; DEPLOYMENT + USER_GUIDE.

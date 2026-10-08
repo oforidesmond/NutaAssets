@@ -18,9 +18,12 @@ export default async function NewAssetPage() {
   if (!can(session.user, "create")) redirect("/assets");
 
   const options = await getAssetFormOptions(session.user);
+  const selectedDept =
+    options.departmentId && options.departmentId !== "all"
+      ? options.departmentId
+      : null;
   const departmentId =
-    options.departmentId ??
-    (await resolveAdminDepartmentId(session.user));
+    selectedDept ?? (await resolveAdminDepartmentId(session.user));
 
   if (!departmentId) {
     return (

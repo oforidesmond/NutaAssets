@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut, Moon, Sun, UserRound } from "lucide-react";
+import { HelpCircle, LogOut, Moon, Sun, UserRound } from "lucide-react";
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
 
@@ -50,6 +51,12 @@ export function UserMenu({
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/help">
+            <HelpCircle className="size-4" />
+            Help & guide
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
         >

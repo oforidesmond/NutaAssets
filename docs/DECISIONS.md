@@ -62,6 +62,18 @@ Assumptions made during implementation. Confirm or correct anything marked **OPE
 | D34 | Approve shows a **diff preview**, then applies in **chunks of 200**, then marks `APPROVED` | Same Hobby timeout budget as D17/D27; officers see what will change before commit. |
 | D35 | Typed `observed` shape: `{ statusId?, locationId?, assignedToText?, serialNumber?, brand?, model?, remarks?, categoryId?, assetTag? }` | Only fields that differ (or full draft for unlisted); shared by verify UI, preview, and apply. |
 
+## Phase 6
+
+| ID | Decision | Rationale |
+|---|---|---|
+| D36 | Charts with **Recharts**; command palette with **cmdk** | Matches brief stack; Dialog-wrapped Command for a11y focus trap. |
+| D37 | Needs-review centre at **`/assets/needs-review`** | Keeps data-quality next to the register; dashboard KPI deep-links here. |
+| D38 | One-click fixes = clear flag / suggest tag / clear placeholders — **no silent duplicate merge** | Soft-warn policy (D14); officers must open conflicting assets deliberately. |
+| D39 | Reports as hub + **`/reports/[slug]`**; print CSS hides chrome | Printable pages without a separate print layout engine. |
+| D40 | Performance: indexes on `warrantyExpiry`, `createdAt`, `(departmentId, deletedAt, needsReview)` + optional `pg_trgm` GIN | Dashboard/report filters and ILIKE search; Neon supports the extension. |
+| D41 | Playwright smoke in CI against seeded Postgres + `next start` | Brief §11; kept lean (login → add asset → recon path) for Hobby CI time. |
+| D42 | Seed sets `mustChangePassword=false` when `E2E_SKIP_PASSWORD_CHANGE=1` | Avoids JWT/session races on forced password change in smoke tests; production seed still forces change. |
+
 ## Open questions
 
 1. Confirm **Tech** branch code (`TJ`?).

@@ -296,6 +296,9 @@ model Asset {
   @@index([needsReview])
   @@index([deletedAt])
   @@index([importJobId])
+  @@index([warrantyExpiry])
+  @@index([createdAt])
+  @@index([departmentId, deletedAt, needsReview])
 }
 
 model FieldDefinition {

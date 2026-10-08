@@ -32,6 +32,8 @@ jobs:
       SEED_ADMIN_EMAIL: admin@example.com
       SEED_ADMIN_PASSWORD: ChangeMeNow1!
       SKIP_ENV_VALIDATION: "true"
+      E2E_SKIP_PASSWORD_CHANGE: "1"
+      CI: "true"
 
     steps:
       - uses: actions/checkout@v4
@@ -56,8 +58,14 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
+      - name: Unit tests
         run: npm run test
 
       - name: Build
         run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E smoke
+        run: npm run test:e2e

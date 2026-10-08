@@ -45,6 +45,7 @@ export default async function AppLayout({
           orgName={orgName}
           departments={departments}
           selectedDepartment={selectedDepartment}
+          authUser={authUser}
           user={{
             name: session.user.name ?? "User",
             email: session.user.email ?? "",

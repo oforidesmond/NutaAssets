@@ -81,3 +81,25 @@ body {
   color: hsl(var(--foreground));
   font-family: var(--font-source-sans), system-ui, sans-serif;
 }
+
+@media print {
+  aside,
+  header,
+  nav,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .report-page {
+    font-size: 11pt;
+  }
+}

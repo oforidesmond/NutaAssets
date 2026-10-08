@@ -122,7 +122,10 @@ function customFieldFilter(
 
 export async function listAssets(user: AuthUser, params: AssetListParams) {
   const cookieDept = await getSelectedDepartmentId();
-  const deptScope = scopedDepartmentIds(user, cookieDept);
+  const deptScope = scopedDepartmentIds(
+    user,
+    cookieDept === "all" ? null : cookieDept,
+  );
   const branchScope = scopedBranchIds(user, params.branchId);
 
   const fieldDefs = await prisma.fieldDefinition.findMany({
@@ -267,7 +270,10 @@ export async function listAssets(user: AuthUser, params: AssetListParams) {
 
 export async function getAssetFilterOptions(user: AuthUser) {
   const cookieDept = await getSelectedDepartmentId();
-  const deptScope = scopedDepartmentIds(user, cookieDept);
+  const deptScope = scopedDepartmentIds(
+    user,
+    cookieDept === "all" ? null : cookieDept,
+  );
   const deptFilter = deptScope ? { departmentId: { in: deptScope } } : {};
 
   const [branches, categories, statuses] = await Promise.all([
@@ -300,7 +306,10 @@ export async function getAssetFilterOptions(user: AuthUser) {
 
 export async function getAssetDetail(user: AuthUser, id: string) {
   const cookieDept = await getSelectedDepartmentId();
-  const deptScope = scopedDepartmentIds(user, cookieDept);
+  const deptScope = scopedDepartmentIds(
+    user,
+    cookieDept === "all" ? null : cookieDept,
+  );
   const branchScope = scopedBranchIds(user);
 
   const asset = await prisma.asset.findFirst({

@@ -8,9 +8,12 @@ import { getSelectedDepartmentId } from "@/server/queries/org";
 
 export async function resolveAdminDepartmentId(user: AuthUser) {
   const cookieDept = await getSelectedDepartmentId();
-  const scoped = scopedDepartmentIds(user, cookieDept);
+  const scoped = scopedDepartmentIds(
+    user,
+    cookieDept === "all" ? null : cookieDept,
+  );
   if (scoped === null) {
-    // Super admin without cookie — pick first active dept
+    // Super admin / unrestricted — pick first active dept
     const first = await prisma.department.findFirst({
       where: { isActive: true, deletedAt: null },
       orderBy: { name: "asc" },

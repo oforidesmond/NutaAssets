@@ -21,6 +21,12 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen bg-background">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:shadow"
+      >
+        Skip to content
+      </a>
       <AppSidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed((v) => !v)}
@@ -29,7 +35,13 @@ export function AppShell({
       />
       <div className="flex min-w-0 flex-1 flex-col">
         {header}
-        <main className="flex-1 px-3 pb-24 pt-4 md:px-6 md:pb-6">{children}</main>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 px-3 pb-24 pt-4 outline-none md:px-6 md:pb-6"
+        >
+          {children}
+        </main>
       </div>
       <MobileNav user={user} />
     </div>

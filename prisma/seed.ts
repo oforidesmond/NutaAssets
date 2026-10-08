@@ -401,6 +401,8 @@ async function main() {
   });
 
   const passwordHash = await hash(adminPassword, 12);
+  // CI/e2e can skip forced password change for a stable smoke login
+  const mustChangePassword = process.env.E2E_SKIP_PASSWORD_CHANGE !== "1";
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {
@@ -408,7 +410,7 @@ async function main() {
       passwordHash,
       role: "SUPER_ADMIN",
       isActive: true,
-      mustChangePassword: true,
+      mustChangePassword,
       failedLogins: 0,
       lockedUntil: null,
       deletedAt: null,
@@ -419,7 +421,7 @@ async function main() {
       passwordHash,
       role: "SUPER_ADMIN",
       isActive: true,
-      mustChangePassword: true,
+      mustChangePassword,
     },
   });
 
@@ -432,7 +434,11 @@ async function main() {
   });
 
   console.log(`Seed complete. Super Admin: ${adminEmail}`);
-  console.log("Set a new password on first login (mustChangePassword=true).");
+  console.log(
+    mustChangePassword
+      ? "Set a new password on first login (mustChangePassword=true)."
+      : "E2E_SKIP_PASSWORD_CHANGE=1 — admin can sign in without password change.",
+  );
 }
 
 main()
