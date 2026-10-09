@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -35,8 +35,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SuggestInput } from "@/components/ui/suggest-input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { assigneeSuggestionsAction } from "@/server/actions/assets";
 import {
   addUnlistedItemAction,
   removeUnlistedItemAction,
@@ -700,6 +702,11 @@ function DifferDialog({
   const [remarks, setRemarks] = useState("");
   const [note, setNote] = useState("");
 
+  const fetchAssignees = useCallback(async (q: string) => {
+    const res = await assigneeSuggestionsAction(q);
+    return res.ok ? (res.data?.items ?? []) : [];
+  }, []);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -747,9 +754,11 @@ function DifferDialog({
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label>Assigned to</Label>
-            <Input
+            <SuggestInput
               value={assignedToText}
-              onChange={(e) => setAssignedToText(e.target.value)}
+              onChange={setAssignedToText}
+              fetchSuggestions={fetchAssignees}
+              placeholder="Person or unit name"
             />
           </div>
           <div className="space-y-2">

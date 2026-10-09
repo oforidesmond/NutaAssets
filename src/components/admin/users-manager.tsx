@@ -42,6 +42,7 @@ type UserRow = {
   id: string;
   name: string;
   email: string;
+  phone: string | null;
   role: Role;
   isActive: boolean;
   mustChangePassword: boolean;
@@ -77,6 +78,7 @@ export function UsersManager({
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     role: "EDITOR" as Role,
     isActive: true,
@@ -89,6 +91,7 @@ export function UsersManager({
     setForm({
       name: "",
       email: "",
+      phone: "",
       password: "",
       role: "EDITOR",
       isActive: true,
@@ -103,6 +106,7 @@ export function UsersManager({
     setForm({
       name: user.name,
       email: user.email,
+      phone: user.phone ?? "",
       password: "",
       role: user.role,
       isActive: user.isActive,
@@ -122,6 +126,7 @@ export function UsersManager({
         const result = await updateUserAction(editing.id, {
           name: form.name,
           email: form.email,
+          phone: form.phone,
           role: form.role,
           isActive: form.isActive,
           departmentIds: form.departmentIds,
@@ -133,13 +138,14 @@ export function UsersManager({
         }
         toast.success("User updated");
       } else {
-        if (form.password.length < 10) {
-          toast.error("Temporary password must be at least 10 characters");
+        if (form.password.length < 8) {
+          toast.error("Temporary password must be at least 8 characters");
           return;
         }
         const result = await createUserAction({
           name: form.name,
           email: form.email,
+          phone: form.phone,
           password: form.password,
           role: form.role,
           isActive: form.isActive,
@@ -150,7 +156,15 @@ export function UsersManager({
           toast.error(result.error ?? "Could not create");
           return;
         }
-        toast.success("User created — they must change password on first login");
+        if (result.data?.smsSent) {
+          toast.success(
+            "User created — login credentials sent by SMS. They must change password on first login.",
+          );
+        } else {
+          toast.warning(
+            "User created, but SMS failed — share the email and temporary password manually.",
+          );
+        }
       }
       setOpen(false);
       window.location.reload();
@@ -158,8 +172,8 @@ export function UsersManager({
   }
 
   function resetPassword() {
-    if (!resetUserId || tempPassword.length < 10) {
-      toast.error("Password must be at least 10 characters");
+    if (!resetUserId || tempPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
       return;
     }
     startTransition(async () => {
@@ -170,7 +184,15 @@ export function UsersManager({
         toast.error(result.error ?? "Could not reset");
         return;
       }
-      toast.success("Password reset — user must change it on next login");
+      if (result.data?.smsSent) {
+        toast.success(
+          "Password reset — credentials sent by SMS. User must change it on next login.",
+        );
+      } else {
+        toast.warning(
+          "Password reset, but SMS failed — share the temporary password manually.",
+        );
+      }
       setResetOpen(false);
       setTempPassword("");
       setResetUserId(null);
@@ -192,6 +214,7 @@ export function UsersManager({
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Departments</TableHead>
               <TableHead>Active</TableHead>
@@ -213,6 +236,9 @@ export function UsersManager({
                   )}
                 </TableCell>
                 <TableCell className="text-sm">{user.email}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {user.phone ?? "—"}
+                </TableCell>
                 <TableCell>{ROLE_LABELS[user.role]}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">
                   {user.departments.map((d) => d.department.name).join(", ") ||
@@ -273,6 +299,21 @@ export function UsersManager({
                 }
               />
             </div>
+            <div className="space-y-1.5">
+              <Label>Phone</Label>
+              <Input
+                type="tel"
+                inputMode="tel"
+                placeholder="024XXXXXXX or 233XXXXXXXXX"
+                value={form.phone}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, phone: e.target.value }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Ghana number. Used to SMS login credentials.
+              </p>
+            </div>
             {!editing && (
               <div className="space-y-1.5">
                 <Label>Temporary password</Label>
@@ -284,7 +325,8 @@ export function UsersManager({
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  Min 10 characters. User must change it on first login.
+                  Min 8 characters. Sent by SMS; user must change it on first
+                  login.
                 </p>
               </div>
             )}
@@ -365,7 +407,9 @@ export function UsersManager({
             </Button>
             <Button
               onClick={save}
-              disabled={pending || !form.name || !form.email}
+              disabled={
+                pending || !form.name || !form.email || !form.phone
+              }
             >
               {editing ? "Save" : "Create"}
             </Button>
@@ -385,6 +429,9 @@ export function UsersManager({
               value={tempPassword}
               onChange={(e) => setTempPassword(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              Sent by SMS to the user&apos;s phone number.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setResetOpen(false)}>

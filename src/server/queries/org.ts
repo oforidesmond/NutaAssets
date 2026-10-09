@@ -7,10 +7,24 @@ import {
   parseDepartmentCookie,
 } from "@/lib/department-cookie";
 
-export async function getOrgName() {
+export type OrgBrand = {
+  name: string;
+  logoUrl: string | null;
+};
+
+export async function getOrg(): Promise<OrgBrand> {
   const setting = await prisma.setting.findUnique({ where: { key: "org" } });
-  const value = setting?.value as { name?: string } | null;
-  return value?.name ?? "AssetTrack";
+  const value = setting?.value as { name?: string; logoUrl?: string } | null;
+  const logoUrl = value?.logoUrl?.trim() || null;
+  return {
+    name: value?.name ?? "AssetTrack",
+    logoUrl,
+  };
+}
+
+export async function getOrgName() {
+  const org = await getOrg();
+  return org.name;
 }
 
 export async function getAccessibleDepartments() {

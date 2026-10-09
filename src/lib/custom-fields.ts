@@ -43,6 +43,44 @@ export function slugifyFieldKey(label: string, categoryCode?: string | null): st
   return base;
 }
 
+/**
+ * Strip the category-code suffix from a field key (`hostname__lt` → `hostname`).
+ * Dept-wide keys without a suffix are returned unchanged.
+ */
+export function fieldKeyBase(key: string): string {
+  const i = key.lastIndexOf("__");
+  return i === -1 ? key : key.slice(0, i);
+}
+
+/**
+ * Category-scoped copies of the same field share a label (D6). For list filters /
+ * column pickers, keep the first occurrence of each label so "Operating System"
+ * does not appear once per category.
+ */
+export function dedupeFieldsByLabel<T extends { label: string }>(defs: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const def of defs) {
+    const label = def.label.trim().toLowerCase();
+    if (seen.has(label)) continue;
+    seen.add(label);
+    out.push(def);
+  }
+  return out;
+}
+
+/** All FieldDefinition keys that share the same base as `key` (incl. itself). */
+export function relatedFieldKeys(
+  defs: { key: string }[],
+  key: string,
+): string[] {
+  const base = fieldKeyBase(key);
+  const keys = defs
+    .filter((d) => fieldKeyBase(d.key) === base)
+    .map((d) => d.key);
+  return keys.length > 0 ? keys : [key];
+}
+
 /** Fields that apply to a given category (dept-wide or category-scoped). */
 export function fieldsForCategory<
   T extends Pick<FieldDefinition, "categoryId" | "isActive">,

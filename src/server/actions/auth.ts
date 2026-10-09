@@ -2,6 +2,7 @@
 
 import { compare, hash } from "bcryptjs";
 import { AuthError } from "next-auth";
+import { redirect } from "next/navigation";
 
 import { auth, signIn } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
@@ -26,13 +27,31 @@ export async function loginAction(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
+  const email = parsed.data.email.toLowerCase().trim();
+
   try {
-    await signIn("credentials", {
-      email: parsed.data.email,
+    // Set the session cookie without auto-navigating, then redirect once to the
+    // correct destination. (Calling auth() in this same action cannot see the
+    // cookie that signIn just wrote, so we read mustChangePassword from the DB.)
+    const resultUrl = await signIn("credentials", {
+      email,
       password: parsed.data.password,
-      redirectTo: "/dashboard",
+      redirect: false,
     });
-    return { ok: true };
+
+    if (
+      typeof resultUrl === "string" &&
+      (resultUrl.includes("error=") || resultUrl.includes("CredentialsSignin"))
+    ) {
+      return { ok: false, error: "Email or password is incorrect." };
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { email, deletedAt: null },
+      select: { mustChangePassword: true },
+    });
+
+    redirect(user?.mustChangePassword ? "/change-password" : "/dashboard");
   } catch (error) {
     if (error instanceof AuthError) {
       return {
@@ -78,6 +97,13 @@ export async function changePasswordAction(
   const valid = await compare(parsed.data.currentPassword, user.passwordHash);
   if (!valid) {
     return { ok: false, error: "Current password is incorrect." };
+  }
+
+  if (parsed.data.newPassword === parsed.data.currentPassword) {
+    return {
+      ok: false,
+      error: "New password must be different from your current password.",
+    };
   }
 
   const passwordHash = await hash(parsed.data.newPassword, 12);

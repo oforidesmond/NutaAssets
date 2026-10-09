@@ -5,6 +5,7 @@ import {
   scopedBranchIds,
   scopedDepartmentIds,
 } from "@/lib/authorize";
+import { relatedFieldKeys } from "@/lib/custom-fields";
 import { prisma } from "@/lib/db";
 import { DEFAULT_ASSET_COLUMNS } from "@/schemas/asset";
 import { getSelectedDepartmentId } from "@/server/queries/org";
@@ -171,7 +172,15 @@ export async function listAssets(user: AuthUser, params: AssetListParams) {
     for (const [key, value] of Object.entries(params.cf)) {
       const def = fieldDefs.find((f) => f.key === key);
       if (!def) continue;
-      andParts.push(customFieldFilter(key, value, def.type));
+      // Category-scoped copies share a label; match any sibling key (D6).
+      const keys = relatedFieldKeys(fieldDefs, key);
+      if (keys.length === 1) {
+        andParts.push(customFieldFilter(keys[0]!, value, def.type));
+      } else {
+        andParts.push({
+          OR: keys.map((k) => customFieldFilter(k, value, def.type)),
+        });
+      }
     }
   }
 

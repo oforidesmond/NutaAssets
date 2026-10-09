@@ -32,8 +32,7 @@ export default async function ReconciliationPage() {
             Reconciliation
           </h1>
           <p className="text-sm text-muted-foreground">
-            Branch verification campaigns — create an exercise, count assets on
-            site, submit, and approve.
+            Branch reconciliation exercise. Count assets, submit, and approve.
           </p>
         </div>
         {canReconcile && (

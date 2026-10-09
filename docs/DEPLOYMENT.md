@@ -31,7 +31,13 @@ In **Settings → Environment Variables**, set for Production (and Preview if yo
 | `AUTH_SECRET` | Long random string (≥32 chars). Generate with `openssl rand -base64 32` |
 | `AUTH_URL` | Public site URL, e.g. `https://your-app.vercel.app` |
 | `SEED_ADMIN_EMAIL` | First Super Admin email (seed only) |
-| `SEED_ADMIN_PASSWORD` | Temp password (≥10 chars); user must change on first login |
+| `SEED_ADMIN_PASSWORD` | Temp password (≥8 chars); user must change on first login |
+| `SMS_PROVIDER` | `ebits` (sends login credentials by SMS on user create / password reset) |
+| `EBITS_SMS_BASE_URL` | e.g. `https://alerts.ebitsgh.com` |
+| `EBITS_SMS_API_KEY` | ebits API key (header `api-key`) |
+| `EBITS_SMS_SENDER_ID` | Approved sender ID string |
+
+SMS vars are optional for boot/local without SMS; without them, user create/reset still works but credentials are not delivered by SMS.
 
 Optional later: Blob token if you enable photo attachments (app works without Blob).
 

@@ -12,16 +12,48 @@ export type LegacySheetMeta = {
   orgName?: string;
 };
 
+export type LegacyExerciseSheet = {
+  rows: ExportAssetRow[];
+  meta: LegacySheetMeta;
+};
+
+const XLSX_TYPE =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+/** Excel worksheet names: max 31 chars; no \ / ? * [ ] */
+export function sanitizeWorksheetName(
+  raw: string,
+  used: Set<string>,
+): string {
+  let base = raw
+    .replace(/[\\/?*[\]]/g, "_")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!base) base = "Branch";
+  base = base.slice(0, 31);
+
+  let candidate = base;
+  let n = 2;
+  while (used.has(candidate.toLowerCase())) {
+    const suffix = `_${n}`;
+    candidate = `${base.slice(0, Math.max(1, 31 - suffix.length))}${suffix}`;
+    n += 1;
+  }
+  used.add(candidate.toLowerCase());
+  return candidate;
+}
+
 /**
- * Export in the original branch inventory sheet layout:
+ * Fill a worksheet with the original branch inventory sheet layout:
  * title, Branch Name / Inventory Date / Prepared By, status legend, data table.
  */
-export async function buildLegacyBranchSheet(
+export function appendLegacyBranchWorksheet(
+  workbook: ExcelJS.Workbook,
   rows: ExportAssetRow[],
   meta: LegacySheetMeta,
-): Promise<Blob> {
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Inventory", {
+  sheetName = "Inventory",
+): ExcelJS.Worksheet {
+  const sheet = workbook.addWorksheet(sheetName, {
     views: [{ state: "frozen", ySplit: 5 }],
   });
 
@@ -84,10 +116,38 @@ export async function buildLegacyBranchSheet(
     sheet.getColumn(i + 1).width = w;
   });
 
+  return sheet;
+}
+
+/**
+ * Export in the original branch inventory sheet layout (single worksheet).
+ */
+export async function buildLegacyBranchSheet(
+  rows: ExportAssetRow[],
+  meta: LegacySheetMeta,
+): Promise<Blob> {
+  const workbook = new ExcelJS.Workbook();
+  appendLegacyBranchWorksheet(workbook, rows, meta, "Inventory");
   const buffer = await workbook.xlsx.writeBuffer();
-  return new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
+  return new Blob([buffer], { type: XLSX_TYPE });
+}
+
+/**
+ * One workbook with a worksheet tab per branch (legacy layout each).
+ */
+export async function buildLegacyExerciseWorkbook(
+  sheets: LegacyExerciseSheet[],
+): Promise<Blob> {
+  const workbook = new ExcelJS.Workbook();
+  const used = new Set<string>();
+
+  for (const { rows, meta } of sheets) {
+    const name = sanitizeWorksheetName(meta.branchName, used);
+    appendLegacyBranchWorksheet(workbook, rows, meta, name);
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Blob([buffer], { type: XLSX_TYPE });
 }
 
 export async function downloadLegacyBranchSheet(
@@ -96,5 +156,13 @@ export async function downloadLegacyBranchSheet(
   meta: LegacySheetMeta,
 ) {
   const blob = await buildLegacyBranchSheet(rows, meta);
+  downloadBlob(filename, blob);
+}
+
+export async function downloadLegacyExerciseWorkbook(
+  filename: string,
+  sheets: LegacyExerciseSheet[],
+) {
+  const blob = await buildLegacyExerciseWorkbook(sheets);
   downloadBlob(filename, blob);
 }

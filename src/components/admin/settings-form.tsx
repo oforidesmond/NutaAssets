@@ -102,6 +102,9 @@ export function SettingsForm({ initial }: { initial: SettingsSnapshot }) {
             }
             placeholder="https://…"
           />
+          {/* <p className="text-xs text-muted-foreground">
+            Shown in the sidebar, mobile header, and login screen when set.
+          </p> */}
         </div>
       </section>
 
@@ -155,7 +158,8 @@ export function SettingsForm({ initial }: { initial: SettingsSnapshot }) {
               setForm((f) => ({ ...f, attachmentsEnabled: c === true }))
             }
           />
-          Enable photo attachments (requires Vercel Blob — optional)
+          {/* Enable photo attachments (requires Vercel Blob — optional) */}
+          Enable photo attachments
         </label>
       </section>
 

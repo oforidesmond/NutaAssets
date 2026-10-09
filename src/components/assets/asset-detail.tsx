@@ -453,7 +453,8 @@ export function AssetDetail({
 
         <TabsContent value="attachments" className="pt-4">
           <p className="text-sm text-muted-foreground">
-            Attachments arrive in a later phase (optional Vercel Blob).
+            {/* Attachments arrive in a later phase (optional Vercel Blob). */}
+            N/A
           </p>
         </TabsContent>
 

@@ -70,7 +70,7 @@ export default function HelpPage() {
           Help & guide
         </h1>
         <p className="text-sm text-muted-foreground">
-          Plain-language steps for the five jobs you will do most often. Press{" "}
+          Steps for the five jobs you will do most often. Press{" "}
           <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
             ⌘/Ctrl+K
           </kbd>{" "}
@@ -101,11 +101,11 @@ export default function HelpPage() {
         ))}
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      {/* <p className="text-xs text-muted-foreground">
         Full written guide for your team: see{" "}
         <code className="rounded bg-muted px-1">docs/USER_GUIDE.md</code> in the
         project repository.
-      </p>
+      </p> */}
     </div>
   );
 }

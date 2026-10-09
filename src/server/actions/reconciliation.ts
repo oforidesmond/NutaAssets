@@ -409,22 +409,18 @@ export async function getReconFormOptionsAction(
   }
 }
 
+type LegacyExportSheet = {
+  rows: NonNullable<Awaited<ReturnType<typeof buildLegacyExportRows>>>["rows"];
+  meta: {
+    branchName: string;
+    inventoryDate: string;
+    preparedBy: string;
+  };
+};
+
 export async function exportEntryLegacyAction(
   entryId: string,
-): Promise<
-  ActionResult<{
-    rows: Awaited<ReturnType<typeof buildLegacyExportRows>> extends infer T
-      ? T extends { rows: infer R }
-        ? R
-        : never
-      : never;
-    meta: {
-      branchName: string;
-      inventoryDate: string;
-      preparedBy: string;
-    };
-  }>
-> {
+): Promise<ActionResult<LegacyExportSheet>> {
   try {
     const user = await requireUser();
     authorize(user, "export", "export");
@@ -439,6 +435,72 @@ export async function exportEntryLegacyAction(
     return {
       ok: true,
       data: { rows: built.rows, meta: built.meta },
+    };
+  } catch (error) {
+    return handleReconError(error);
+  }
+}
+
+export async function exportExerciseLegacyAction(
+  exerciseId: string,
+): Promise<
+  ActionResult<{
+    exerciseName: string;
+    sheets: LegacyExportSheet[];
+  }>
+> {
+  try {
+    const user = await requireUser();
+    authorize(user, "export", "export");
+
+    const exercise = await prisma.reconciliationExercise.findFirst({
+      where: { id: exerciseId, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        departmentId: true,
+        entries: {
+          where: { status: { in: ["SUBMITTED", "APPROVED"] } },
+          include: {
+            branch: { select: { name: true, sortOrder: true } },
+          },
+          orderBy: [
+            { branch: { sortOrder: "asc" } },
+            { branch: { name: "asc" } },
+          ],
+        },
+      },
+    });
+
+    if (!exercise) {
+      return fail({ ok: false, error: "Exercise not found." });
+    }
+    assertDepartmentAccess(user, exercise.departmentId);
+
+    if (exercise.entries.length === 0) {
+      return fail({
+        ok: false,
+        error: "No submitted or approved branch sheets to export.",
+      });
+    }
+
+    const sheets: LegacyExportSheet[] = [];
+    for (const entry of exercise.entries) {
+      const built = await buildLegacyExportRows(entry.id);
+      if (!built) continue;
+      sheets.push({ rows: built.rows, meta: built.meta });
+    }
+
+    if (sheets.length === 0) {
+      return fail({
+        ok: false,
+        error: "No submitted or approved branch sheets to export.",
+      });
+    }
+
+    return {
+      ok: true,
+      data: { exerciseName: exercise.name, sheets },
     };
   } catch (error) {
     return handleReconError(error);

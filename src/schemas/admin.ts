@@ -1,5 +1,23 @@
 import { z } from "zod";
 
+import { normalizeGhanaPhone } from "@/lib/phone";
+
+const ghanaPhoneSchema = z
+  .string()
+  .trim()
+  .min(1, "Phone number is required")
+  .transform((v, ctx) => {
+    const normalized = normalizeGhanaPhone(v);
+    if (!normalized) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Enter a valid Ghana phone (e.g. 024XXXXXXX or 233XXXXXXXXX)",
+      });
+      return z.NEVER;
+    }
+    return normalized;
+  });
+
 export const branchTypeSchema = z.enum([
   "BRANCH",
   "HEAD_OFFICE",
@@ -136,9 +154,10 @@ export const roleSchema = z.enum([
 export const userCreateSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   email: z.string().trim().email("Enter a valid email").max(320),
+  phone: ghanaPhoneSchema,
   password: z
     .string()
-    .min(10, "Password must be at least 10 characters")
+    .min(8, "Password must be at least 8 characters")
     .max(128),
   role: roleSchema.default("EDITOR"),
   isActive: z.boolean().default(true),
@@ -149,6 +168,7 @@ export const userCreateSchema = z.object({
 export const userUpdateSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   email: z.string().trim().email("Enter a valid email").max(320),
+  phone: ghanaPhoneSchema,
   role: roleSchema,
   isActive: z.boolean().default(true),
   departmentIds: z.array(z.string().min(1)).default([]),
@@ -158,7 +178,7 @@ export const userUpdateSchema = z.object({
 export const userResetPasswordSchema = z.object({
   password: z
     .string()
-    .min(10, "Password must be at least 10 characters")
+    .min(8, "Password must be at least 8 characters")
     .max(128),
 });
 

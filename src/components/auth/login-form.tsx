@@ -9,11 +9,23 @@ import { Label } from "@/components/ui/label";
 
 const initial: ActionResult = { ok: false };
 
-export function LoginForm() {
+export function LoginForm({
+  passwordChanged = false,
+}: {
+  passwordChanged?: boolean;
+}) {
   const [state, formAction, pending] = useActionState(loginAction, initial);
 
   return (
     <form action={formAction} className="space-y-4">
+      {passwordChanged && (
+        <p
+          className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300"
+          role="status"
+        >
+          Password updated. Sign in with your new password.
+        </p>
+      )}
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input

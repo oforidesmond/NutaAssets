@@ -60,7 +60,7 @@ const cards = [
   {
     href: "/admin/recycle-bin",
     title: "Recycle bin",
-    description: "Restore soft-deleted assets.",
+    description: "Restore deleted assets.",
     icon: Trash2,
   },
 ];

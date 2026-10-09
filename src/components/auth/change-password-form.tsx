@@ -1,8 +1,7 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
 
 import { changePasswordAction, type ActionResult } from "@/server/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -12,8 +11,6 @@ import { Label } from "@/components/ui/label";
 const initial: ActionResult = { ok: false };
 
 export function ChangePasswordForm() {
-  const router = useRouter();
-  const { update } = useSession();
   const [state, formAction, pending] = useActionState(
     changePasswordAction,
     initial,
@@ -21,12 +18,11 @@ export function ChangePasswordForm() {
 
   useEffect(() => {
     if (state?.ok) {
-      void update({ mustChangePassword: false }).then(() => {
-        router.replace("/dashboard");
-        router.refresh();
-      });
+      // Sign out so the JWT is rebuilt on the next login with mustChangePassword=false.
+      // Avoids the session-update race that could bounce back to this page.
+      void signOut({ callbackUrl: "/login?passwordChanged=1" });
     }
-  }, [state, router, update]);
+  }, [state]);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -47,10 +43,12 @@ export function ChangePasswordForm() {
           name="newPassword"
           type="password"
           autoComplete="new-password"
-          minLength={10}
+          minLength={8}
           required
         />
-        <p className="text-xs text-muted-foreground">At least 10 characters.</p>
+        <p className="text-xs text-muted-foreground">
+          At least 8 characters, and different from your current password.
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">Confirm new password</Label>
@@ -59,7 +57,7 @@ export function ChangePasswordForm() {
           name="confirmPassword"
           type="password"
           autoComplete="new-password"
-          minLength={10}
+          minLength={8}
           required
         />
       </div>
@@ -70,7 +68,7 @@ export function ChangePasswordForm() {
       )}
       {state?.ok && (
         <p className="text-sm text-green-700 dark:text-green-400">
-          Password updated. Redirecting…
+          Password updated. Please sign in with your new password…
         </p>
       )}
       <Button type="submit" className="w-full" disabled={pending || state?.ok}>

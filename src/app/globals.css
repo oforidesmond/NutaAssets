@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Limit scanning so generated/synced dirs do not retrigger CSS rebuilds. */
+@source "../**/*.{js,ts,jsx,tsx,mdx}";
+@source not "../../.next";
+@source not "../../node_modules";
+
 :root {
   --background: 40 33% 98%;
   --foreground: 222 47% 11%;

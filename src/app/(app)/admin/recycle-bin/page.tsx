@@ -21,7 +21,7 @@ export default async function RecycleBinPage() {
     <div className="space-y-3">
       <h2 className="text-lg font-medium">Recycle bin</h2>
       <p className="text-sm text-muted-foreground">
-        Soft-deleted assets can be restored. Hard delete is not available.
+        Deleted assets can be restored.
       </p>
       <RecycleBin assets={assets} />
     </div>

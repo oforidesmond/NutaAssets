@@ -5,7 +5,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { auth } from "@/lib/auth";
 import {
   getAccessibleDepartments,
-  getOrgName,
+  getOrg,
   getSelectedDepartmentId,
 } from "@/server/queries/org";
 
@@ -23,8 +23,8 @@ export default async function AppLayout({
     redirect("/change-password");
   }
 
-  const [orgName, departments, selectedDepartment] = await Promise.all([
-    getOrgName(),
+  const [org, departments, selectedDepartment] = await Promise.all([
+    getOrg(),
     getAccessibleDepartments(),
     getSelectedDepartmentId(),
   ]);
@@ -38,11 +38,13 @@ export default async function AppLayout({
 
   return (
     <AppShell
-      orgName={orgName}
+      orgName={org.name}
+      orgLogoUrl={org.logoUrl}
       user={authUser}
       header={
         <AppHeader
-          orgName={orgName}
+          orgName={org.name}
+          orgLogoUrl={org.logoUrl}
           departments={departments}
           selectedDepartment={selectedDepartment}
           authUser={authUser}

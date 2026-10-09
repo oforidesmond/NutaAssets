@@ -370,7 +370,7 @@ This replaces the "one Excel sheet per branch" process.
 ---
 
 ## 10. Security checklist
-Hashed passwords (argon2/bcrypt), password policy (min 10 chars), forced change on first login, login throttling/lockout, session expiry, role checks on **every** server mutation and query, department/branch scoping enforced in queries (not just UI), audit logging of auth events & admin changes, file-type/size validation on uploads, no secrets in client bundle, `.env.example` only, dependency audit in CI.
+Hashed passwords (argon2/bcrypt), password policy (min 8 chars), forced change on first login, login throttling/lockout, session expiry, role checks on **every** server mutation and query, department/branch scoping enforced in queries (not just UI), audit logging of auth events & admin changes, file-type/size validation on uploads, no secrets in client bundle, `.env.example` only, dependency audit in CI.
 
 ---
 

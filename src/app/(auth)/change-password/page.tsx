@@ -20,7 +20,7 @@ export default function ChangePasswordPage() {
         <CardHeader className="space-y-2">
           <CardTitle className="text-xl">Choose a new password</CardTitle>
           <CardDescription>
-            For security, you must set your own password before using AssetTrack.
+            For security, you must set your own password.
           </CardDescription>
         </CardHeader>
         <CardContent>

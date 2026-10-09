@@ -9,6 +9,7 @@ import {
 } from "@/components/reconciliation/entry-status-badge";
 import { ExerciseActions } from "@/components/reconciliation/exercise-actions";
 import { LegacyEntryExport } from "@/components/reconciliation/legacy-entry-export";
+import { LegacyExerciseExport } from "@/components/reconciliation/legacy-exercise-export";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/authorize";
@@ -35,6 +36,9 @@ export default async function ExerciseDetailPage({ params }: PageProps) {
   const allApproved =
     exercise.entries.length > 0 &&
     exercise.entries.every((e) => e.status === "APPROVED");
+  const hasExportableSheets = exercise.entries.some(
+    (e) => e.status === "SUBMITTED" || e.status === "APPROVED",
+  );
 
   const totalFound = exercise.entries.reduce((s, e) => s + e.counts.found, 0);
   const totalMissing = exercise.entries.reduce(
@@ -73,14 +77,22 @@ export default async function ExerciseDetailPage({ params }: PageProps) {
               {exercise.notes ? ` · ${exercise.notes}` : ""}
             </p>
           </div>
-          {canReconcile && (
-            <ExerciseActions
-              exerciseId={exercise.id}
-              status={exercise.status}
-              canApprove={canApprove}
-              allApproved={allApproved}
-            />
-          )}
+          <div className="flex flex-wrap gap-2">
+            {canExport && hasExportableSheets && (
+              <LegacyExerciseExport
+                exerciseId={exercise.id}
+                exerciseName={exercise.name}
+              />
+            )}
+            {canReconcile && (
+              <ExerciseActions
+                exerciseId={exercise.id}
+                status={exercise.status}
+                canApprove={canApprove}
+                allApproved={allApproved}
+              />
+            )}
+          </div>
         </div>
       </div>
 

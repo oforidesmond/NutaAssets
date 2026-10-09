@@ -3,6 +3,7 @@ import type { Role } from "@prisma/client";
 
 import { writeAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/db";
+import { buildCredentialsSms, sendSms } from "@/lib/sms";
 import type { UserCreateInput, UserUpdateInput } from "@/schemas/admin";
 import { ServiceError } from "@/server/services/admin-org";
 
@@ -25,6 +26,7 @@ export async function listUsersAdmin() {
       id: true,
       name: true,
       email: true,
+      phone: true,
       role: true,
       isActive: true,
       mustChangePassword: true,
@@ -49,6 +51,7 @@ export async function createUser(input: UserCreateInput, actorId: string) {
       data: {
         name: input.name,
         email: input.email.toLowerCase(),
+        phone: input.phone,
         passwordHash,
         role: input.role,
         isActive: input.isActive,
@@ -85,13 +88,19 @@ export async function createUser(input: UserCreateInput, actorId: string) {
       id: user.id,
       name: user.name,
       email: user.email,
+      phone: user.phone,
       role: user.role,
       departmentIds: input.departmentIds,
       branchIds: input.branchIds,
     },
   });
 
-  return user;
+  const sms = await sendSms({
+    to: input.phone,
+    message: buildCredentialsSms(user.email, input.password),
+  });
+
+  return { user, smsSent: sms.ok };
 }
 
 export async function updateUser(
@@ -124,6 +133,7 @@ export async function updateUser(
       data: {
         name: input.name,
         email: input.email.toLowerCase(),
+        phone: input.phone,
         role: input.role as Role,
         isActive: input.isActive,
       },
@@ -160,6 +170,7 @@ export async function updateUser(
     before: {
       name: before.name,
       email: before.email,
+      phone: before.phone,
       role: before.role,
       isActive: before.isActive,
       departmentIds: before.departments.map((d) => d.departmentId),
@@ -168,6 +179,7 @@ export async function updateUser(
     after: {
       name: user.name,
       email: user.email,
+      phone: user.phone,
       role: user.role,
       isActive: user.isActive,
       departmentIds: input.departmentIds,
@@ -187,6 +199,11 @@ export async function resetUserPassword(
     where: { id, deletedAt: null },
   });
   if (!before) throw new ServiceError("User not found.");
+  if (!before.phone) {
+    throw new ServiceError(
+      "User has no phone number. Add a phone number before resetting the password.",
+    );
+  }
 
   const passwordHash = await hash(password, 12);
   const user = await prisma.user.update({
@@ -207,5 +224,10 @@ export async function resetUserPassword(
     after: { mustChangePassword: true },
   });
 
-  return user;
+  const sms = await sendSms({
+    to: before.phone,
+    message: buildCredentialsSms(user.email, password),
+  });
+
+  return { user, smsSent: sms.ok };
 }

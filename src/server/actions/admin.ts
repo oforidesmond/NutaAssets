@@ -440,7 +440,7 @@ export async function deactivateDepartmentAction(
 
 export async function createUserAction(
   raw: unknown,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: string; smsSent: boolean }>> {
   try {
     const user = await requireManageUsers();
     const parsed = userCreateSchema.safeParse(raw);
@@ -449,7 +449,10 @@ export async function createUserAction(
     }
     const created = await createUser(parsed.data, user.id);
     revalidatePath("/admin/users");
-    return { ok: true, data: { id: created.id } };
+    return {
+      ok: true,
+      data: { id: created.user.id, smsSent: created.smsSent },
+    };
   } catch (error) {
     return fail(handleError(error));
   }
@@ -476,18 +479,18 @@ export async function updateUserAction(
 export async function resetUserPasswordAction(
   id: string,
   raw: unknown,
-): Promise<ActionResult> {
+): Promise<ActionResult<{ smsSent: boolean }>> {
   try {
     const user = await requireManageUsers();
     const parsed = userResetPasswordSchema.safeParse(raw);
     if (!parsed.success) {
       return { ok: false, error: parsed.error.issues[0]?.message };
     }
-    await resetUserPassword(id, parsed.data.password, user.id);
+    const result = await resetUserPassword(id, parsed.data.password, user.id);
     revalidatePath("/admin/users");
-    return { ok: true };
+    return { ok: true, data: { smsSent: result.smsSent } };
   } catch (error) {
-    return handleError(error);
+    return fail(handleError(error));
   }
 }
 

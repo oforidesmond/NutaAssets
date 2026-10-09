@@ -50,8 +50,7 @@ export default async function NewAssetPage() {
           Add asset
         </h1>
         <p className="text-sm text-muted-foreground">
-          Capture identification, placement, and status. Incomplete data is fine
-          — flag it for review later.
+          Capture identification, placement, and status.
         </p>
       </div>
       <AssetForm

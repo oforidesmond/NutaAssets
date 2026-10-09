@@ -840,6 +840,23 @@ export async function listModelSuggestions(
   return rows.map((r) => r.model!).filter(Boolean);
 }
 
+/** Bank-wide: people move between departments, so do not scope by dept. */
+export async function listAssigneeSuggestions(q: string, take = 8) {
+  const term = q.trim();
+  if (!term) return [];
+  const rows = await prisma.asset.findMany({
+    where: {
+      deletedAt: null,
+      assignedToText: { contains: term, mode: "insensitive" },
+    },
+    select: { assignedToText: true },
+    distinct: ["assignedToText"],
+    orderBy: { assignedToText: "asc" },
+    take,
+  });
+  return rows.map((r) => r.assignedToText!).filter(Boolean);
+}
+
 export type AssetListInclude = Prisma.AssetGetPayload<{
   include: {
     category: { select: { id: true; name: true; code: true; icon: true } };

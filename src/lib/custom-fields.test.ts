@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   cfColumnId,
+  dedupeFieldsByLabel,
+  fieldKeyBase,
   fieldsForCategory,
   formatCustomFieldValue,
   isSafeTypeChange,
   parseCfColumnId,
+  relatedFieldKeys,
   slugifyFieldKey,
 } from "./custom-fields";
 
@@ -48,6 +51,36 @@ describe("fieldsForCategory", () => {
   it("can include inactive", () => {
     const result = fieldsForCategory(defs, "cat1", { includeInactive: true });
     expect(result.map((d) => d.key)).toEqual(["a", "b", "d"]);
+  });
+});
+
+describe("fieldKeyBase / relatedFieldKeys / dedupeFieldsByLabel", () => {
+  it("strips category suffix", () => {
+    expect(fieldKeyBase("operating_system__lt")).toBe("operating_system");
+    expect(fieldKeyBase("hostname")).toBe("hostname");
+  });
+
+  it("collects sibling keys for the same base", () => {
+    expect(
+      relatedFieldKeys(
+        [
+          { key: "operating_system__lt" },
+          { key: "operating_system__su" },
+          { key: "printer_type__pr" },
+        ],
+        "operating_system__lt",
+      ),
+    ).toEqual(["operating_system__lt", "operating_system__su"]);
+  });
+
+  it("dedupes category-scoped copies by label", () => {
+    expect(
+      dedupeFieldsByLabel([
+        { key: "operating_system__lt", label: "Operating System" },
+        { key: "operating_system__su", label: "Operating System" },
+        { key: "printer_type__pr", label: "Printer Type" },
+      ]).map((d) => d.key),
+    ).toEqual(["operating_system__lt", "printer_type__pr"]);
   });
 });
 

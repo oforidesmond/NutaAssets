@@ -28,6 +28,7 @@ import {
   checkAssetDuplicates,
   createAsset,
   duplicateAsset,
+  listAssigneeSuggestions,
   listBrandSuggestions,
   listModelSuggestions,
   softDeleteAsset,
@@ -281,6 +282,19 @@ export async function modelSuggestionsAction(
     const user = await requireUser();
     authorize(user, "read", "asset");
     const items = await listModelSuggestions(departmentId, q);
+    return { ok: true, data: { items } };
+  } catch (error) {
+    return handleAssetError(error);
+  }
+}
+
+export async function assigneeSuggestionsAction(
+  q: string,
+): Promise<ActionResult<{ items: string[] }>> {
+  try {
+    const user = await requireUser();
+    authorize(user, "read", "asset");
+    const items = await listAssigneeSuggestions(q);
     return { ok: true, data: { items } };
   } catch (error) {
     return handleAssetError(error);

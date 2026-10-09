@@ -98,8 +98,8 @@ async function main() {
     .trim();
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMeNow1!";
 
-  if (adminPassword.length < 10) {
-    throw new Error("SEED_ADMIN_PASSWORD must be at least 10 characters");
+  if (adminPassword.length < 8) {
+    throw new Error("SEED_ADMIN_PASSWORD must be at least 8 characters");
   }
 
   console.log("Seeding AssetTrack…");

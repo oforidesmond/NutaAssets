@@ -57,7 +57,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cfColumnId, readCustomFieldsJson } from "@/lib/custom-fields";
+import {
+  cfColumnId,
+  dedupeFieldsByLabel,
+  readCustomFieldsJson,
+} from "@/lib/custom-fields";
 import { buildAssetsCsv, downloadCsv } from "@/lib/export/csv";
 import { downloadLabelSheet } from "@/lib/export/labels";
 import { downloadAssetsPdf } from "@/lib/export/pdf";
@@ -587,21 +591,23 @@ export function AssetsTable({
               <SelectItem value="0">Clean</SelectItem>
             </SelectContent>
           </Select>
-          {fieldDefs.slice(0, 4).map((def) => (
-            <div key={def.key} className="min-w-[140px] max-w-[180px]">
-              <DynamicField
-                field={def}
-                mode="filter"
-                value={searchParams.get(`cf_${def.key}`) ?? ""}
-                onChange={(v) =>
-                  updateParams({
-                    [`cf_${def.key}`]:
-                      v == null || v === "" ? null : String(v),
-                  })
-                }
-              />
-            </div>
-          ))}
+          {dedupeFieldsByLabel(fieldDefs)
+            .slice(0, 4)
+            .map((def) => (
+              <div key={def.key} className="min-w-[140px] max-w-[180px]">
+                <DynamicField
+                  field={def}
+                  mode="filter"
+                  value={searchParams.get(`cf_${def.key}`) ?? ""}
+                  onChange={(v) =>
+                    updateParams({
+                      [`cf_${def.key}`]:
+                        v == null || v === "" ? null : String(v),
+                    })
+                  }
+                />
+              </div>
+            ))}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -781,31 +787,32 @@ export function AssetsTable({
                   {COLUMN_LABELS[col] ?? col}
                 </DropdownMenuCheckboxItem>
               ))}
-              {fieldDefs.filter((f) => f.showInList).length > 0 && (
+              {dedupeFieldsByLabel(fieldDefs.filter((f) => f.showInList))
+                .length > 0 && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Custom fields</DropdownMenuLabel>
-                  {fieldDefs
-                    .filter((f) => f.showInList)
-                    .map((def) => {
-                      const colId = cfColumnId(def.key);
-                      return (
-                        <DropdownMenuCheckboxItem
-                          key={colId}
-                          checked={visibleColumns.includes(colId)}
-                          onCheckedChange={(checked) => {
-                            const next = checked
-                              ? [...visibleColumns, colId]
-                              : visibleColumns.filter((c) => c !== colId);
-                            updateParams({
-                              columns: next.length ? next.join(",") : null,
-                            });
-                          }}
-                        >
-                          {def.label}
-                        </DropdownMenuCheckboxItem>
-                      );
-                    })}
+                  {dedupeFieldsByLabel(
+                    fieldDefs.filter((f) => f.showInList),
+                  ).map((def) => {
+                    const colId = cfColumnId(def.key);
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={colId}
+                        checked={visibleColumns.includes(colId)}
+                        onCheckedChange={(checked) => {
+                          const next = checked
+                            ? [...visibleColumns, colId]
+                            : visibleColumns.filter((c) => c !== colId);
+                          updateParams({
+                            columns: next.length ? next.join(",") : null,
+                          });
+                        }}
+                      >
+                        {def.label}
+                      </DropdownMenuCheckboxItem>
+                    );
+                  })}
                 </>
               )}
             </DropdownMenuContent>

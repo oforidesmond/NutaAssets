@@ -9,11 +9,13 @@ import { type AuthUser } from "@/lib/authorize";
 export function AppShell({
   children,
   orgName,
+  orgLogoUrl,
   user,
   header,
 }: {
   children: React.ReactNode;
   orgName: string;
+  orgLogoUrl: string | null;
   user: AuthUser;
   header: React.ReactNode;
 }) {
@@ -31,6 +33,7 @@ export function AppShell({
         collapsed={collapsed}
         onToggle={() => setCollapsed((v) => !v)}
         orgName={orgName}
+        orgLogoUrl={orgLogoUrl}
         user={user}
       />
       <div className="flex min-w-0 flex-1 flex-col">
